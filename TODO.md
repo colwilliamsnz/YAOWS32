@@ -4,6 +4,7 @@
 
 * ~Wind speed conversions are defined by magic number - fix~
 * ~Add wind chill to derived measurements~
+* Add RSSI to Thingspeak telemetry data
 * Add serial debug text to resetDay function
 * Refactor getNTP
 * Add wind speed compensation factor for Anemometer (in situations where it can't be located at 10m above ground level). Ref https://cumuluswiki.org/a/Wind_measurement
@@ -16,7 +17,8 @@
 * Consider: Add in MQTT to Mosquito or similar
 * Consider: OTA programing web interface?
 * Add in fixed IP address for quicker connections to WiFi (every second running at 170mAh counts!)
-* Refactor cloud publishing code - 95% is similar so move to function
+* Refactor cloud publishing code - 95% is similar so move it to function
+* Fix PWSWeather function--missing wind data
 * Consider: Add "test harnis" for cloud publishing services
 
 ## Slave Code
