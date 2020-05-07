@@ -1,9 +1,7 @@
 # YAOWS32
 
 ## Summary
-Yet Another Open Weather Station (YAOWS32) is a weather station shield for ESP32 IoT dev board.
-
-Wind and rain sensors are accommodated as well as numerous other peripheral sensors via 3 x 1-Wire, 3 x I2C, and 2 x Analog headers.
+Yet Another Open Weather Station (YAOWS32) is a weather station shield for ESP32 IoT dev board. Wind and rain sensors are accommodated as well as numerous other peripheral sensors via 3 x 1-Wire, 3 x I2C, and 2 x Analog headers.
 
 Power consumption is kept low and battery/solar compatible by sleeping the ESP32 and waking it just long enough to sense weather conditions and upload to the cloud on a scheduled basis. Wind speed, direction and rain are sensed full time utilising a low power ATTiny85 running as an I2C “slave”.
 
@@ -32,7 +30,7 @@ The original prototype board installed in its weather proof housing and [Stevens
 
 ![YAOWS32 Prototype](Images/yaows32_initial_install.jpeg)
 
-##Sensors
+## Sensors
 
 Wind and Rain: Fed up with the cheaper Fine Offset sensors that tend to turn “chalky” in UV intense New Zealand weather conditions, I opted for Davis Instruments 6410 Anemometer and 6462 Rain gauge. Fine Offset devices are also compatible —- these are commonly sold from Amazon, eBay etc.
 
