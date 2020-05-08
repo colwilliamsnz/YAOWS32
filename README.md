@@ -32,17 +32,17 @@ Here follows are the sensors tested in my prototype. All are commonly available 
 
 I opted for Davis Instruments 6410 Anemometer and 6462 Rain gauge which I picked up second hand. The common Fine Offset units sold on Ebay, Amazon, etc are also compatible.
 
-![Davis 6410](Images/sensor_daviswind.png | width=250)
+<img src="Images/sensor_daviswind.png" width="250"><br>
 
 Practically any "tipping" rain gauge or anemometer that generates a pulse as it rotates may be used. Any wind vane that is either a potentiometer OR resister network can be used but will need to be decoded first (ie, ADC readings determined against wind directions).
 
-![Fine Offset](Images/sensor_fineoffset.png)
+<img src="Images/sensor_fineoffset.png" width="250"><br>
 
 ### Temperature & Humidity
 
 A 1-wire DHT11 was used. The version I have is housed in a very nice weather proof probe case including mounting hardware. There are identical looking AM2315 I2C versions also. These are not waterproof so still require sheltering from rain in some form of Stevenson screen.
 
-![DHT11](Images/sensor_dht11.png)
+<img src="Images/sensor_dht11.png" width="250"><br>
 
 ### Pressure
 
