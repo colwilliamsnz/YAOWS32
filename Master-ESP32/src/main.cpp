@@ -38,13 +38,10 @@ void setup()
   // Setup external sensors
   setupSensorsExternal();
 
-  // Setup Real time clock module
-  initRTC();
-
   // We need WiFi for NTP sync (any other setup that requires WiFi should go in here)
   initWiFi();
 
-  // Sync ESP32 (and external RTC if applicable) with NTP
+  // Sync ESP32 RTC with NTP
   getNTPTime();
   
   // Disconnect and power down WiFi chipset
@@ -59,8 +56,6 @@ void setup()
 
 void loop()
 {
-  displayDS3231DateTime();
-
   displayESP32DateTime();
 
   getSlave();
@@ -73,18 +68,18 @@ void loop()
 
   // **** functions that require WiFi start here ****
 
+  getNTPTime();
+
   //sendCloudDataWeatherUnderground();
 
-  //sendCloudDataWeatherCloud();
+  sendCloudDataWeatherCloud();
 
   //sendCloudDataPWSWeather();
 
   //sendCloudDataThingSpeak();
 
-  getNTPTime();
-
   // **** functions that require WiFi end here ****
-
+  
   killWiFi();
 
   resetDay();

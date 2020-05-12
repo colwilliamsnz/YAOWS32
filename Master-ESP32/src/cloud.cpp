@@ -25,7 +25,10 @@ void sendCloudDataWeatherCloud()
 
   if (!client.connect(cloudServer, 80))
   {
-    Serial.println(F("\tConnection failed"));
+    #if DEBUG
+      Serial.println(F("\tConnection failed"));
+    #endif
+
     return;
   }
 
@@ -35,27 +38,34 @@ void sendCloudDataWeatherCloud()
 
   String postStr = "";
   postStr += "/set/wid/";
-  postStr += g_cloudServiceWeatherCloudId;
-  postStr += "/key/";
-  postStr += g_cloudServiceWeatherCloudKey;
+
+  #if DEBUG_CLOUD_WEATHERCLOUD
+    postStr += g_cloudServiceWeatherCloudId_DEBUG;
+    postStr += "/key/";
+    postStr += g_cloudServiceWeatherCloudKey_DEBUG;
+  #else
+    postStr += g_cloudServiceWeatherCloudId;
+    postStr += "/key/";
+    postStr += g_cloudServiceWeatherCloudKey;
+  #endif
 
   postStr += "/temp/";
-  postStr += g_weatherTempAirC * 10; // 21.5deg reported as 215
-  //postStr += "/tempin/";
+  postStr += g_weatherTempAirC * 10;    // 21.5deg reported as 215
+  //postStr += "/tempin/";              // Inside temp
   postStr += "/hum/";
   postStr += g_weatherHumidity;
-  //postStr += "/humin/";
+  //postStr += "/humin/";               // Inside humidity
   postStr += "/bar/";
   postStr += g_weatherPressureRel * 10; // 1017hPa reported as 10170
   postStr += "/rain/";
-  postStr += g_weatherRainFall * 10; // Rainfall 2.0mm reported as 20
+  postStr += g_weatherRainFall * 10;    // Rainfall 2.0mm reported as 20
   postStr += "/rainrate/";
   postStr += g_weatherRainRate * 10;
   postStr += "/heat/";
   postStr += g_weatherHeatIndexC * 10;
   postStr += "/dew/";
   postStr += g_weatherDewPointC * 10;
-  postStr += "/wspd/"; // Windspeeds reported in m/s * 10
+  postStr += "/wspd/";                  // Windspeed reported in m/s * 10
   postStr += convertKpHtoMpS(g_weatherWindAvg * 10);
   postStr += "/wspdavg/";
   postStr += convertKpHtoMpS(g_weatherWindAvg * 10);
@@ -70,19 +80,36 @@ void sendCloudDataWeatherCloud()
   postStr += "/chill/";               
   postStr += g_weatherTempWindChillC * 10; // Windchill of 21.5deg reported as 215
 
-  client.print(String("GET ") + postStr + "/ HTTP/1.1\r\n" + "Host: " + cloudServer + "\r\n" + "Connection: close\r\n\r\n");
-
   #if DEBUG
     Serial.print("\tGET ");
     Serial.println(postStr);
   #endif
 
-  while (client.available())
+  client.print(String("GET ") + postStr + " HTTP/1.1\r\n" + 
+      "Host: " + cloudServer + "\r\n" +
+      "User-Agent: YAOWS32\r\n" +
+      "Connection: close\r\n\r\n");
+
+  while (client.connected())
   {
-    //String line = client.readStringUntil('\r');
-    char line = client.read();
-    Serial.println(line);
+    while (client.available())
+    {
+      String line = client.readStringUntil('\n');
+
+      // 400 = Bad request?
+      // 401 = Invalid WID or KEY?
+      // 404 = Invalid request action?
+      // 500 = Too frequent data upload?
+      // 200 = Success!
+      if (line == "200\r") line = "Success posting weather data!";
+      if (line == "500\r") line = "Update period too frequent, ignoring data!";
+
+      #if DEBUG
+        Serial.println("\t" + line);
+      #endif
+    }   
   }
+  Serial.println(F("\tDisconnected from WeatherCloud"));
 }
 
 void sendCloudDataThingSpeak()

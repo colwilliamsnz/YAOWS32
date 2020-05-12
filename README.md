@@ -32,7 +32,7 @@ Here follows are the sensors tested in my prototype. All are commonly available 
 
 I opted for Davis Instruments 6410 Anemometer and 6462 Rain gauge which I picked up second hand. The common Fine Offset units sold on Ebay, Amazon, etc are also compatible.
 
-<img src="Images/sensor_daviswind.png" width="250"><br>
+<img src="Images/sensor_davis.png" width="500"><br>
 
 Practically any "tipping" rain gauge or anemometer that generates a pulse as it rotates may be used. Any wind vane that is either a potentiometer OR resister network can be used but will need to be decoded first (ie, ADC readings determined against wind directions).
 
