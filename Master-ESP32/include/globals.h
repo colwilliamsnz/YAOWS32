@@ -9,8 +9,6 @@
 #include <Wire.h>
 #include <OneWire.h>
 
-#include <RtcDS3231.h>
-
 #include <Adafruit_Sensor.h>
 #include <Adafruit_BME280.h>
 #include <Adafruit_BMP085.h>
@@ -19,8 +17,6 @@
 #include <DallasTemperature.h>
 
 // *** Global classes *********************************************************
-
-extern RtcDS3231<TwoWire> sensor_rtc;
 
 extern DHT sensor_dht22;
 
@@ -48,6 +44,7 @@ extern float g_weatherDewPointC;
 extern float g_weatherHeatIndexC;
 
 extern float g_weatherRainFall;
+extern float g_weatherRainFallDaily;
 extern float g_weatherRainRate;
 
 extern float g_weatherWindAvg;
@@ -56,7 +53,7 @@ extern float g_weatherWindDir;
 
 extern float g_stationBatteryVoltage;
 extern float g_stationBatteryCurrent;
-extern float g_stationTempC;
+extern int   g_stationWiFiRSSI;
 
 extern int   g_ntpCheckIntervalTimer;
 

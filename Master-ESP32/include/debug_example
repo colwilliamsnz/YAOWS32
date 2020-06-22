@@ -1,0 +1,26 @@
+#ifndef DEBUG_H
+#define DEBUG_H
+
+// // Example file - ensure you rename to "debug.h" and update appropriately!
+
+// *** Compiler directives for debugging to serial console *********************
+// 0 = disable, 1 = enable
+// *****************************************************************************
+
+// Send debug output to serial console
+#define DEBUG                               0
+
+// Wake events and updates occur every 2 minutes VS every 10
+#define DEBUG_FAST                          0 
+
+// Print verbose messages from rest API responses from cloud services
+#define DEBUG_CLOUD_VERBOSE                 0
+
+// Send data to "debug" instances of the various cloud services
+#define DEBUG_CLOUD_WEATHERUNDERGROUND      0
+#define DEBUG_CLOUD_PWSWEATHER              0
+#define DEBUG_CLOUD_WEATHERCLOUD            0
+#define DEBUG_CLOUD_THINGSPEAK              0
+// *****************************************************************************
+
+#endif

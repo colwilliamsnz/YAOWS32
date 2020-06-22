@@ -1,58 +1,68 @@
 #include <Arduino.h>
 
-/*
-Convert temperature degrees C to F
-*/
-float convertTempCtoF(float tempC)
+
+/**
+ * @brief Convert mm to inches (for rain)
+ */
+float mm_to_inches(float mm)
+{
+  return (mm / 25.4);
+}
+
+
+/**
+ * @brief Convert temperature degrees C to F
+ */
+float C_to_F(float tempC)
 {
   return (tempC * 9.0) / 5.0 + 32.0;
 }
 
 
-/*
-Convert temperature degrees F to C
-*/
-float convertTempFtoC(float tempF)
+/**
+ * @brief Convert temperature degrees F to C
+ */
+float F_to_C(float tempF)
 {
   return (tempF - 32.0) * 5.0 / 9.0;
 }
 
 
-/*
-Convert pressure hPa to inHg
-*/
-float convertPressureHPAtoINHG(float pressure_hPa)
+/**
+ * @brief Convert pressure hPa to inHg
+ */
+float hPa_to_inHg(float hPa)
 {
-  return pressure_hPa * 0.02953;
+  return hPa * 0.02953;
 }
 
 
 /**
- * @brief Convert speed in kph to mps (meters per second)
+ * @brief Convert speed in kph to ms (meters per second)
  * 
- * @param speedKpH 
+ * @param speedKpH
  * @return float 
  */
-float convertKpHtoMpS(float speedKpH)
+float kph_to_ms(float kph)
 {
-  return speedKpH / 3.6;
+  return kph / 3.6;
 }
 
 /**
  * @brief Convert speed in kph to mph (miles per hour)
  * 
- * @param speedKpH 
+ * @param speed in kilometers per hour (kph)
  * @return float 
  */
-float convertKpHtoMpH(float speedKpH)
+float kph_to_mph(float kph)
 {
-  return speedKpH / 1.60934;
+  return kph / 1.60934;
 }
 
 
-/*
-Calculate the Dewpoint in degrees C from TempC and Humidity
-*/
+/**
+ * @brief Calculate the Dewpoint in degrees C from TempC and Humidity
+ */
 float calcDewPointC(float tempC, float humidity)
 {
 /*
@@ -63,9 +73,6 @@ important measurement used to predict the formation of dew, frost, and fog.
 This equation is an approximation of the Goff & Gratch equation, which is extremely
 complex. This equation is one recommended by the World Meteorological Organization
 for saturation of air with respect to water.
-
-Ref Davis Instruments support document "Derived variables in Davis Weather Products"
-https://www.davisinstruments.com/support/derived-variables-in-davis-weather-products/
 */  
   float k = log(humidity / 100) + (17.62 * tempC) / (243.12 + tempC);
 
@@ -90,9 +97,6 @@ float calcWindChillC(float tempC, float windKpH)
   to the body and offers some protection from cooler air molecules. However, wind sweeps
   that comfy warm air surrounding the body away. The faster the wind blows, the faster heat
   is carried away and the colder the environment feels.
-  
-  Ref Davis Instruments support document "Derived variables in Davis Weather Products"
-  https://www.davisinstruments.com/support/derived-variables-in-davis-weather-products/
   */
   float windChillC;
 
@@ -118,7 +122,7 @@ float calcWindChillC(float tempC, float windKpH)
 
 
 /**
- * @brief   Compute Heat Index in deg C
+ * @brief   Calculate Heat Index in deg C
  * 
  * @param   temperature temperature in C
  * @param   percentHumidity humidity in percent
@@ -139,7 +143,7 @@ float calcHeatIndexC(float temperature, float percentHumidity)
  */ 
   float hi;
 
-  temperature = convertTempCtoF(temperature);   // formula requires F native temp
+  temperature = C_to_F(temperature);   // formula requires F native temp
 
   hi = 0.5 * (temperature + 61.0 + ((temperature - 68.0) * 1.2) + (percentHumidity * 0.094));
 
@@ -160,5 +164,22 @@ float calcHeatIndexC(float temperature, float percentHumidity)
       hi += ((percentHumidity - 85.0) * 0.1) * ((87.0 - temperature) * 0.2);
   }
 
-  return (convertTempFtoC(hi));
+  return (F_to_C(hi));
 } // end calcHeatIndexC
+
+
+float calcWindSpeedHeightComp(float height, float windKpH)
+{
+/* Recalculate wind speed taking into account height compensation factor (for
+    situations where the anemometer can't be located at the regulation 10m AGL
+    (above ground level). Compensates for "air friction over land"
+    Ref https://cumuluswiki.org/a/Wind_measurement
+  
+  Compensation factor = 1/(0.233 + 0.656 * log10(h + 4.75))
+    where h = height of anemometer in meters above ground level
+*/
+ 
+float factor = 1/(0.233 + 0.656 * log10(height + 4.75));
+
+return windKpH * factor;
+}

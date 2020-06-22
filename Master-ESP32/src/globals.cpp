@@ -9,8 +9,6 @@ Adafruit_BME280 sensor_bme280;
 Adafruit_BMP085 sensor_bmp180;
 Adafruit_INA219 sensor_ina219;
 
-RtcDS3231<TwoWire> sensor_rtc(Wire1);
-
 DHT sensor_dht22(INPUT_SENSOR_1WIRE_1, DHT22);
 
 // Setup a oneWire instance to communicate with any OneWire devices
@@ -36,6 +34,7 @@ float   g_weatherDewPointC      {0};
 float   g_weatherHeatIndexC     {0};
 
 float   g_weatherRainFall       {0};
+float   g_weatherRainFallDaily  {0};
 float   g_weatherRainRate       {0};
 
 float   g_weatherWindAvg        {0};
@@ -46,10 +45,12 @@ float   g_weatherWindDir        {0};
 // *** Weather station onboard sensor telemetry data
 float   g_stationBatteryVoltage {0};
 float   g_stationBatteryCurrent {0};
-float   g_stationTempC          {0};
+int     g_stationWiFiRSSI       {0};
+
 
 // *** Timer (minutes) to determine if we should check NTP yet?
 int     g_ntpCheckIntervalTimer {0};
+
 
 // *** I2C sensor status
 bool    g_sensorStatusBME280;

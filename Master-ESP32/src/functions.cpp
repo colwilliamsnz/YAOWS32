@@ -1,13 +1,15 @@
+#include "debug.h"
+#include "version.h"
+
 #include "functions.h"
 #include "globals.h"
+
 #include "station.h"
 #include "passwords.h"
 #include "weathermath.h"
 #include "cloud.h"
 
 #include "gpio.h"
-
-#include "version.h"
 
 #include <Arduino.h>
 
@@ -16,8 +18,6 @@
 
 #include <Wire.h>
 #include <OneWire.h>
-
-#include <RtcDS3231.h>
 
 #include <Adafruit_Sensor.h>
 #include <Adafruit_BME280.h>
@@ -45,6 +45,9 @@ void getDerivedMeasurements()
     Serial.println(" °C");
     Serial.print(F("\tRainfall: \t\t"));
     Serial.print(g_weatherRainFall);
+    Serial.println(" mm");
+    Serial.print("\tRainfall (daily): \t");
+    Serial.print(g_weatherRainFallDaily);
     Serial.println(" mm");
     Serial.print(F("\tRain Rate: \t\t"));
     Serial.print(g_weatherRainRate);
@@ -204,7 +207,8 @@ void initWiFi()
 
     #if DEBUG
       Serial.println();
-      Serial.print(F("Attempting WiFi connection..."));
+      Serial.print(F("Attempting WiFi connection to SSID "));
+      Serial.print(g_wiFiSSID);
     #endif
 
     int WLanCount = 0;
@@ -226,19 +230,25 @@ void initWiFi()
     {
       // Connection succesful - turn on WiFi indicator LED
       digitalWrite(OUTPUT_LED_WIFI, HIGH);
+
+      // Get WiFi RSSI
+      g_stationWiFiRSSI = WiFi.RSSI();
+
       // Display IP address etc to serial console 
       getWiFiInfo();
     }
     
     else
     {
-      // Put ESP32 into sleep mode to save battery power for 60 minutes
+      // Put ESP32 into deep sleep mode for the update interval period
       #if DEBUG
         Serial.println();
-        Serial.println(F("Failed to connect to WiFi. Sleeping for 60 minutes to conserve battery."));
+        Serial.print(F("\tFailed to connect to WiFi. Sleeping for "));
+        Serial.print(g_stationUpdatePeriod);
+        Serial.println(F(" minutes to conserve battery."));
       #endif
 
-      ESP.deepSleep(15 * 60 * 1000000);
+      initSleep();
       ESP.restart();
     }
   }
@@ -256,7 +266,6 @@ void getSensors()
   #endif
 
   getSensorINA219(); // Voltage/current sensor
-  getSensorDS3231(); // RTC sensor (getting temp only)
 
   #if DEBUG
     Serial.println();
@@ -414,11 +423,14 @@ void getSlave()
 
   g_weatherRainRate = rainRate;
 
-  // Add rain tip cout to the overall volume for the day
-  g_weatherRainFall = g_weatherRainFall + (g_stationRainTipVolume * rawRainCnt);
+  // Add rain tip count to the overall volume for the entire day
+  g_weatherRainFallDaily = g_weatherRainFallDaily + (g_stationRainTipVolume * rawRainCnt);
 
-  g_weatherWindAvg = windSpeed;
-  g_weatherWindGust = windGustSpeed;
+  // Assign rain tip count to the overall volume for the reporting period
+  g_weatherRainFall = g_stationRainTipVolume * rawRainCnt;
+
+  g_weatherWindAvg = calcWindSpeedHeightComp(g_stationWindVaneHeight, windSpeed);
+  g_weatherWindGust = calcWindSpeedHeightComp(g_stationWindVaneHeight, windGustSpeed);
   g_weatherWindDir = rawWindDir;
 
   #if DEBUG
@@ -437,9 +449,6 @@ void getSlave()
     Serial.println(" km/h");
     Serial.print("\tRain Tip Count: \t");
     Serial.println(rawRainCnt);
-    Serial.print("\tRain Rate (calc): \t");
-    Serial.print(rainRate);
-    Serial.println(" mm/h");
   #endif
 } // end function getSlave ****************************************************
 
@@ -471,71 +480,25 @@ void getNTPTime()
     Serial.println(F("Updating time from NTP server..."));
   #endif
 
-  configTime(g_ntpOffset, g_ntpOffsetDST, g_ntpServer1); // init and get the time from # 1 NTP server
-
-  #if DEBUG
-    Serial.print(F("\tTrying server "));
-    Serial.print(g_ntpServer1);
-    Serial.print("...");
-  #endif
+  configTzTime(g_ntpTimeZone, g_ntpServer1, g_ntpServer2, g_ntpServer3);
 
   struct tm timeinfo;
 
   if (!getLocalTime(&timeinfo))
   {
-    configTime(g_ntpOffset, g_ntpOffsetDST, g_ntpServer2); // init and get the time from # 2 NTP server
     #if DEBUG
-        Serial.println(F("failed"));
-        Serial.print(F("\tTrying server "));
-        Serial.print(g_ntpServer2);
-        Serial.print("...");
-    #endif
-  }
-
-  if (!getLocalTime(&timeinfo))
-  {
-    #if DEBUG
-        Serial.println("failed");
+        Serial.println("\tFailed");
     #endif
 
     return;
   }
 
   #if DEBUG
-    Serial.println(&timeinfo, "got datetime: %Y/%m/%d %H:%M:%S");
+    Serial.println(&timeinfo, "\tGot datetime: \t\t%Y/%m/%d %H:%M:%S");
   #endif
 
   g_ntpCheckIntervalTimer = g_ntpCheckInterval; // reset the interval timer now that we got a valid time from NTP
-
-  // convert timeinfo structure to format suitable for the RTC DS3121 library
-  // (ie, "Apr  9 2020", "23:14:00")
-  char dateString[12], timeString[9];
-
-  strftime(dateString, sizeof(dateString), "%b %e %Y", &timeinfo);
-  strftime(timeString, sizeof(timeString), "%H:%M:%S", &timeinfo);
-
-  // set the RTC with NTP time
-  RtcDateTime newtime = RtcDateTime(dateString, timeString);
-  sensor_rtc.SetDateTime(newtime);
 } // end getNTPTime ***********************************************************
-
-
-/**
- * @brief Get the temperature from onboard DS3121 RTC
- * 
- */
-void getSensorDS3231()
-{
-  RtcTemperature temp = sensor_rtc.GetTemperature();
-
-  #if DEBUG
-    Serial.print("\tDS3231 Temp:\t\t");
-    temp.Print(Serial);
-    Serial.println(" °C");
-  #endif
-
-  g_stationTempC = temp.AsFloatDegC();
-} // end function getSensorDS3121 *********************************************
 
 
 /**
@@ -592,7 +555,10 @@ void getSensorBME280()
 {
   if (!g_sensorStatusBME280)
   {
-    Serial.println("\tCould not find a valid BME280 sensor, check wiring!");
+    #ifdef DEBUG
+      Serial.println("\tCould not find a valid BME280 sensor, check wiring!");
+    #endif
+    
     return;
   }
 
@@ -684,111 +650,7 @@ void getSensorINA219()
 
 
 /**
- * @brief talise the DS3121 RTC Clock module by setting initial state and setting
- * the time to the "compiled time". Note that compiled time is a backstop measure
- * should the NTP service not be responding AND this be the first time the RTC
- * is run (or the device be booted without a battery).
- */
-void initRTC()
-{
-  #if DEBUG
-    Serial.println();
-    Serial.println(F("Checking DS3121 Real Time Clock..."));
-  #endif
-
-  RtcDateTime compiled = RtcDateTime(__DATE__, __TIME__);
-
-  if (!sensor_rtc.IsDateTimeValid())
-  {
-    if (sensor_rtc.LastError() != 0)
-    {
-      // we have a communications error - see https://www.arduino.cc/en/Reference/WireEndTransmission for error definition
-      Serial.print(F("\tRTC communications error = "));
-      Serial.println(sensor_rtc.LastError());
-    }
-    else
-    {
-      // Common Causes:
-      //    1) first time you ran and the device wasn't running yet
-      //    2) the battery on the device is low or even missing
-      Serial.println(F("\tRTC lost confidence in the DateTime!"));
-
-      // following line sets the RTC to the date & time this sketch was compiled
-      // it will also reset the valid flag internally unless the Rtc device is
-      // having an issue
-      sensor_rtc.SetDateTime(compiled);
-    }
-  }
-
-  if (!sensor_rtc.GetIsRunning())
-  {
-    sensor_rtc.SetIsRunning(true);
-
-    #if DEBUG
-      Serial.println(F("\tRTC was not actively running...starting now"));
-    #endif
-  }
-
-  RtcDateTime now = sensor_rtc.GetDateTime();
-
-  #if DEBUG
-    char time[9], date[15];
-
-    sprintf(date, "%04d/%02d/%02d ", now.Year(), now.Month(), now.Day());
-    sprintf(time, "%02d:%02d:%02d", now.Hour(), now.Minute(), now.Second());
-
-    Serial.print(F("\tRTC time is: \t\t"));
-    Serial.print(date);
-    Serial.println(time);
-  #endif
-
-  if (now < compiled)
-  {
-    sensor_rtc.SetDateTime(compiled);
-    #if DEBUG
-      Serial.println(F("\tRTC is older than compile time...updating to compile time"));
-    #endif
-  }
-  else if (now > compiled)
-  {
-    #if DEBUG
-      Serial.println(F("\tRTC is newer than compile time...OK"));
-    #endif
-  }
-  else if (now == compiled)
-  {
-    #if DEBUG
-      Serial.println(F("\tRTC is the same as compile time...OK"));
-    #endif
-  }
-
-  // Set RTC options to do nothing (we don't know status so we should set to what we need)
-  sensor_rtc.Enable32kHzPin(false);
-  sensor_rtc.SetSquareWavePin(DS3231SquareWavePin_ModeNone);
-  sensor_rtc.LatchAlarmsTriggeredFlags();
-} // end function initRTC *****************************************************
-
-
-/**
-* @brief Print DS3121 RTC Time and Date to the serial monitor
-*/
-void displayDS3231DateTime()
-{
-  RtcDateTime now = sensor_rtc.GetDateTime();
-
-  char _time[9], _date[15];
-
-  sprintf(_date, "%04d/%02d/%02d ", now.Year(), now.Month(), now.Day());
-  sprintf(_time, "%02d:%02d:%02d", now.Hour(), now.Minute(), now.Second());
-
-  Serial.print(F("\tDS3121 datetime: \t"));
-  Serial.print(_date);
-  Serial.println(_time);
-} // end function displayDS3121Time *******************************************
-
-
-/**
-* @brief Print DS3121 RTC Time and Date to the serial monitor
+* @brief Print ESP32 RTC Time and Date to the serial monitor
 */
 void displayESP32DateTime()
 {
@@ -796,7 +658,7 @@ void displayESP32DateTime()
     struct tm timeinfo;
     getLocalTime(&timeinfo);
 
-    Serial.println(&timeinfo, "\tESP32 datetime:\t\t%Y/%m/%d %H:%M:%S");
+    Serial.println(&timeinfo, "\tESP32 RTC datetime:\t\t%Y/%m/%d %H:%M:%S");
   #endif
 } // end function displayESP32Time ********************************************
 
@@ -807,6 +669,11 @@ void displayESP32DateTime()
  */
 void resetDay()
 {
+  #if DEBUG
+    Serial.println();
+    Serial.println(F("Checking reset of daily stats..."));
+  #endif
+  
   struct tm timeNow;
   getLocalTime(&timeNow);
 
@@ -815,31 +682,19 @@ void resetDay()
 
   if (strcmp(timeCheck, g_stationDailyResetTime) == 0) // char arrays match, its time to reset the daily stats
   {
-    g_weatherRainFall = 0; // reset accumulated rainfall
-
+    g_weatherRainFallDaily = 0; // reset daily accumulated rainfall
+      #if DEBUG
+      Serial.print(F("\tCurrent time matches configured time ("));
+      Serial.print(g_stationDailyResetTime);
+      Serial.println(F(")--resetting"));
+    #endif
+  }
+  else
+  {
     #if DEBUG
-      Serial.println(F("Reset day!"));
+      Serial.print(F("\tCurrent time doesn't match configured time ("));
+      Serial.print(g_stationDailyResetTime);
+      Serial.println(F(")--skipping"));
     #endif
   }
 } // end function resetDay ****************************************************
-
-
-/**
- * @brief assign ESP32 RTC datetime to DS3121
- */
-void setDS3121RTC()
-{
-  struct tm timeNow;
-  getLocalTime(&timeNow); // get ESP32 RTC time
-  
-  // convert timeinfo structure to format suitable for the RTC DS3121 library
-  // (ie, "Apr  9 2020", "23:14:00")
-  char dateString[12], timeString[9];
-
-  strftime(dateString, sizeof(dateString), "%b %e %Y", &timeNow);
-  strftime(timeString, sizeof(timeString), "%H:%M:%S", &timeNow);
-
-  // set the DS3121 RTC
-  RtcDateTime timeUpdate = RtcDateTime(dateString, timeString);
-  sensor_rtc.SetDateTime(timeUpdate);
-} // end function setDS3121RTC ************************************************

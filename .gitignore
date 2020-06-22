@@ -5,3 +5,6 @@ YAOWS32.code-workspace
 Master-ESP32/src/passwords.cpp
 Master-ESP32/yaows32-master.code-workspace
 Master-ESP32/.vscode/extensions.json
+Master-ESP32/include/passwords.h
+Master-ESP32/include/passwords_example
+Master-ESP32/include/debug.h

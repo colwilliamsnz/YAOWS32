@@ -1,5 +1,6 @@
 #include <Arduino.h>
 
+#include "debug.h"        // debug compiler directives are set here
 #include "version.h"      // version number and serial DEBUG flag are set here
 
 #include "globals.h"      // all other globals (vars and objects) are init'd here
@@ -14,7 +15,7 @@
 
 void setup()
 {
-  // Start serial console for debugging (refer "version.h" header file for where
+  // Start serial console for debugging (refer "debug.h" header file for where
   // to set DEBUG on/off)
   Serial.begin(115200);
   
@@ -70,13 +71,13 @@ void loop()
 
   getNTPTime();
 
-  //sendCloudDataWeatherUnderground();
+  sendCloudDataWeatherUnderground();
 
   sendCloudDataWeatherCloud();
 
-  //sendCloudDataPWSWeather();
+  sendCloudDataPWSWeather();
 
-  //sendCloudDataThingSpeak();
+  sendCloudDataThingSpeak();
 
   // **** functions that require WiFi end here ****
   

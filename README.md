@@ -5,21 +5,22 @@ Yet Another Open Weather Station (YAOWS32) is a weather station shield for ESP32
 
 Power consumption is kept low and battery/solar compatible by sleeping the ESP32 and waking it just long enough to sense weather conditions and upload to the cloud on a scheduled basis. Wind speed, direction and rain are sensed full time utilising a low power ATTiny85 running as an I2C slave.
 
-It is designed to be powered by 12v SLA battery which is in turn charged by a small 5w (or similar) 20v solar panel (note, the solar controller is not part of the core design).
+It is designed to be powered by 12v SLA battery which is in turn charged by a small 5w (or similar) 20v solar panel (note, the solar controller is not part of the core design--there are numerous inexpensive solar controllers available on AliExpress etc that fill this duty nicely.
+
+The code is Arduino C++, written in [Visual Studio Code](https://code.visualstudio.com) and [Platform IO](https://platformio.org).
 
 ![YAOWS32 Prototype](Images/yaows32_prototype.jpeg)
-
 ## Objectives
-Having owned a couple of low cost weather stations that failed after a year or two, I decided to design something that would go the distance whilst providing an ideal project to learn a bit about Arduino, C++, and IoT.
+Having owned a couple of low cost weather stations that failed after a year or two, I decided to design something that would go the distance whilst providing an ideal project to learn about Arduino, C++, and IoT.
 
-As core Arduino boards are so pervasive and inexpensive, the design started out as an Arduino Nano in a master slave configuration using 433Mhz to transmit data between an indoor master and outdoor units. Eventually I discovered the more powerful and versatile ESP32 platform and so the design morphed into an all-in-one outdoor solution.
+As core Arduino boards are so pervasive and inexpensive, the design started out as a couple of Arduino Nano's in a master slave configuration using 433Mhz to transmit data between indoor "master" and outdoor "slave" units. Eventually I discovered the more powerful ESP32 platform and so the design morphed into an all-in-one outdoor solution.
 
-Finally a robust and expandable system requiring next to no maintenance was also desirable.
+Finally a robust system requiring next to no maintenance was also desirable as well as having expansion capability such that extra sensors could be added with only a few tweaks to the code.
 
 ## Circuit
 The prototype circuit was designed using EasyEDA. Version 1.1 of the circuit design and PCB board is available [here](https://easyeda.com/colwilliamsnz/YAOWS_copy).
 
-_Note: The 3231 RTC will likely be removed from a future design revision as it draws approx 700uA and adds very little to the overall solution VS the ESP32 onboard RTC and regular NTP time sync to keep any skew in check. In rev 1.1, the RTC can be omitted entirely from the board or disabled by removing the jumper marked “RTC”._
+_Note: The 3231 RTC included in the v1.1 design is disabled via jumper and relevant code updated to remove it from operation. Whilst the ESP32 RTC does run a little fast (+3 seconds per hour in my prototypes), the accuracy of the external 3231 RTC is not worth the 700uA of current draw overhead it adds given this is intended to be a solar powered system. The ESP32 RTC can easily be kept accurate enough by regular updates using NTP._
 
 ### Components
 TBC
@@ -50,7 +51,7 @@ I housed an I2C BMP180 in a custom weather proof case. These are accurate and in
 
 ## Prototype
 
-The original prototype board installed in its weather proof housing and [Stevenson screen](https://en.wikipedia.org/wiki/Stevenson_screen). A 5 watt 20v solar panel and weather proof box containing a 9000mAh SLA battery and PWM solar controller sit alongside.
+The original prototype board is pictured below, installed in its weather proof housing and [Stevenson screen](https://en.wikipedia.org/wiki/Stevenson_screen). A 5 watt 20v solar panel and weather proof box containing a 9000mAh SLA battery and PWM solar controller sit alongside.
 
 _Note: the solar plant is oversized as I intended it to double as an emergency power supply for charging phones during power outages--we often loose power in bad weather conditions where I live._
 
