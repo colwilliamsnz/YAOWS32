@@ -71,13 +71,15 @@ void loop()
 
   getNTPTime();
 
-  sendCloudDataWeatherUnderground();
+  //sendCloudDataMQTT();
 
-  sendCloudDataWeatherCloud();
+  //sendCloudDataWeatherUnderground();
 
-  sendCloudDataPWSWeather();
+  //sendCloudDataWeatherCloud();
 
-  sendCloudDataThingSpeak();
+  //sendCloudDataPWSWeather();
+
+  //sendCloudDataThingSpeak();
 
   // **** functions that require WiFi end here ****
   

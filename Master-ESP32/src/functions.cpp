@@ -22,6 +22,7 @@
 #include <Adafruit_Sensor.h>
 #include <Adafruit_BME280.h>
 #include <Adafruit_BMP085.h>
+//#include <Adafruit_AM2315.h>
 #include <dht.h>
 #include <Adafruit_INA219.h>
 #include <DallasTemperature.h>
@@ -275,6 +276,7 @@ void getSensors()
   getSensorBMP180();  // Pressure sensor
   getSensorBME280();  // Pressure, Temp & Hum sensor
   getSensorDHT22();   // Temp/Hum sensor
+  getSensorAM2315();  // Temp/Hum sensor
   getSensorDS18B20(); // Soil temp sensor
 }
 
@@ -527,6 +529,31 @@ void getSensorDHT22()
 
 
 /**
+ * @brief Get the temperature and humidty from AM2315 I2C sensor
+ * 
+ */
+void getSensorAM2315()
+{
+  float _temp = sensor_am2315.readTemperature();
+  float _hum = sensor_am2315.readHumidity();
+
+  g_weatherTempAirC = _temp;
+  g_weatherHumidity = _hum;
+
+#if DEBUG
+  Serial.print("\tAM2315 Temp:\t\t");
+  Serial.print(_temp);
+  Serial.print(" °C");
+  Serial.println();
+  Serial.print("\tAM2315 Hum:\t\t");
+  Serial.print(_hum);
+  Serial.print(" %");
+  Serial.println();
+#endif
+} // end function getSensorAM2315 **********************************************
+
+
+/**
  * @brief Get the temperature from DS18B20 1-Wire sensor
  * 
  */
@@ -658,7 +685,7 @@ void displayESP32DateTime()
     struct tm timeinfo;
     getLocalTime(&timeinfo);
 
-    Serial.println(&timeinfo, "\tESP32 RTC datetime:\t\t%Y/%m/%d %H:%M:%S");
+    Serial.println(&timeinfo, "\tESP32 RTC datetime:\t%Y/%m/%d %H:%M:%S");
   #endif
 } // end function displayESP32Time ********************************************
 
