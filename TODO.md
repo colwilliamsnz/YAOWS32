@@ -1,6 +1,6 @@
 # Todo
 
-## "Parent" ESP32 Code
+## Master Code
 
 * ~Wind speed conversions are defined by magic number - fix~
 * ~Add wind chill to derived measurements~
@@ -21,8 +21,9 @@
 * Consider: Refactor cloud publishing code - 95% is similar so move it to function
 * ~Fix PWSWeather function--missing wind data~
 * ~Add "test harnis" for cloud publishing services~
+*
 
-## "Worker" ATTiny84 Code
+## Slave Code
 
 * ~Add reference for Fine Offset wind direction http://mile-end.co.uk/blog/bits/Weather-Sensor-Assembly.pdf~
 * Add instantaneous wind speed and direction (repurpose wind gust code -- report the last 6s wind gust recorded for the period).
@@ -31,8 +32,4 @@
 
 * Prototype sensors with MOSFET control of power and pull up resistors
 * Add reverse polarity protection to battery input
-* Add additional power filtering caps to try and resolve the issue with the ESP32 intermittantly locking up during init of WiFi. Eg, 1000uf electrolytic at the buck converter output, 47uf tantalum on the ESP32 board between 3.3v and GND.
-* Add external watchdog chip (ref previous point) to reset both MCUs in the event of a lockup. The "Worker" should tickle the watchdog chip by way of state machine
-* Remove DS3221 RTC from design
-* Add ICSP header for worker MCU
-* Explore alternative MCUs for the "worker" to eek out more power savings.
+* More power filtering caps to try and resolve the issue with the ESP32 locking up during init of WiFi. Eg, 1000uf electrolytic at the buck converter output, 47uf tantalum on the ESP32 board between 3.3v and GND.

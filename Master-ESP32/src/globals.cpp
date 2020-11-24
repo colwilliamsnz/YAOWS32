@@ -8,7 +8,6 @@
 Adafruit_BME280 sensor_bme280;
 Adafruit_BMP085 sensor_bmp180;
 Adafruit_INA219 sensor_ina219;
-Adafruit_AM2315 sensor_am2315;
 
 DHT sensor_dht22(INPUT_SENSOR_1WIRE_1, DHT22);
 

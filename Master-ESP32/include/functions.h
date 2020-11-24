@@ -16,7 +16,6 @@ void    getSensors();
 
 void    getSensorBME280();
 void    getSensorBMP180();
-void    getSensorAM2315();
 void    getSensorDHT22();
 void    getSensorDS18B20();
 

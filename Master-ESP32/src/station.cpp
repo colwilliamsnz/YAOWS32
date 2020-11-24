@@ -23,12 +23,12 @@ constexpr   char            g_stationDailyResetTime[]   = "00:00";
 
 // Altitude of the station in metres. Used to calculate relative pressure from 
 // pressure sensor which gives ABS
-constexpr   float           g_stationAltitude           = 220;
+constexpr   float           g_stationAltitude           = 43.37;
 
 // If the altitude is not known, enter the nearest stations relative pressure in
 // hPa and view the debug console to get  an estimate of the station altitude to
 // enter into g_stationAltitude above
-constexpr   float           g_stationPressureCal        = 1031.00;
+constexpr   float           g_stationPressureCal        = 1015.60;
 
 // Rain bucket volume - the amount of rain that has fallen when the rain sensor
 // bucket tips once. Measured in mm.

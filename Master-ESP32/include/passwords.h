@@ -1,17 +1,9 @@
 #ifndef PASSWORDS_H
 #define PASSWORDS_H
 
-#include <Arduino.h>
-
 // *** WiFi credentials ********************************************************
 extern  char    g_wiFiSSID[];
 extern  char    g_wiFiPass[];
-
-// *** Cloud service, MQTT specifics *******************************************
-extern  char    g_cloudServiceMQTTServer[];
-extern  uint16_t     g_cloudServiceMQTTPort;
-extern  char    g_cloudServiceMQTTID[];
-extern  char    g_cloudServiceMQTTPassword[];
 
 // *** Cloud service, Wunderground specifics ***********************************
 extern  char    g_cloudServiceWeatherUndergroundID[];

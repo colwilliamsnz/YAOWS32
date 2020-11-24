@@ -1,19 +1,9 @@
 #ifndef VERSION_H
 #define VERSION_H
 
-#define VERSION "1.1.0"
+#define VERSION "1.0.0"
 
 /*** Version log ***************************************************************
-
-1.1.0 - Misc updates and improvements
-
-- Add simple MQTT support (1 topic per weather stat) for easy population of wea-
-    ther data to the likes of Home Assistant.
-
-- Changed rainfall in the "Thingspeak" publisher from rain fall to rain daily.
-
-- Add support for AM2315 temp/humidity sensor.
-
 
 1.0.0 - Misc updates and improvements
 
