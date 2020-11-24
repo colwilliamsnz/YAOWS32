@@ -12,6 +12,8 @@
 #include <Adafruit_Sensor.h>
 #include <Adafruit_BME280.h>
 #include <Adafruit_BMP085.h>
+#include <Adafruit_AM2315.h>
+
 #include <dht.h>
 #include <Adafruit_INA219.h>
 #include <DallasTemperature.h>
@@ -27,6 +29,7 @@ extern DallasTemperature sensor_ds18b20;
 extern Adafruit_BME280 sensor_bme280;
 extern Adafruit_BMP085 sensor_bmp180;
 extern Adafruit_INA219 sensor_ina219;
+extern Adafruit_AM2315 sensor_am2315;
 
 
 // *** Global variables *******************************************************

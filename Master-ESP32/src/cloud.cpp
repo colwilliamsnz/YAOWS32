@@ -12,6 +12,96 @@
 #include "gpio.h"
 
 #include <Arduino.h>
+#include <PubSubClient.h>
+
+void sendCloudDataMQTT()
+{
+  #if DEBUG
+    Serial.println();
+    Serial.println(F("Posting data to MQTT..."));
+  #endif
+  
+  WiFiClient espClient;
+
+  PubSubClient client(espClient);
+
+  char stringBuffer[10];
+
+  client.setServer(g_cloudServiceMQTTServer, g_cloudServiceMQTTPort);
+
+  if (!client.connected()) {
+
+    // Create a random client ID
+    String clientId = "YAOWS32";
+    clientId += String(random(0xffff), HEX);
+
+    // Attempt to connect
+    if (client.connect(clientId.c_str(), g_cloudServiceMQTTID, g_cloudServiceMQTTPassword)) {
+      #if DEBUG
+        Serial.println("\tConnected successfully");
+      #endif
+
+      // Once connected, publish data ...
+      sprintf (stringBuffer, "%.2f", g_stationBatteryVoltage);
+      client.publish("yaows32/stationbattery", stringBuffer, true);
+
+      sprintf (stringBuffer, "%.2f", g_stationBatteryCurrent);
+      client.publish("yaows32/stationcurrent", stringBuffer, true);
+
+      sprintf (stringBuffer, "%.2f", g_stationWiFiRSSI);
+      client.publish("yaows32/stationrssi", stringBuffer, true);
+
+      sprintf (stringBuffer, "%.2f", g_weatherTempAirC);
+      client.publish("yaows32/airtemp", stringBuffer, true);
+
+      sprintf (stringBuffer, "%.2f", g_weatherTempWindChillC);
+      client.publish("yaows32/windchill", stringBuffer, true);
+
+      sprintf (stringBuffer, "%.2f", g_weatherHumidity);
+      client.publish("yaows32/humidity", stringBuffer, true);
+
+      sprintf (stringBuffer, "%.2f", g_weatherDewPointC);
+      client.publish("yaows32/dewpoint", stringBuffer, true);
+
+      sprintf (stringBuffer, "%.2f", g_weatherHeatIndexC);
+      client.publish("yaows32/heatindex", stringBuffer, true);
+
+      sprintf (stringBuffer, "%.2f", g_weatherTempWindChillC);
+      client.publish("yaows32/windchill", stringBuffer, true);
+
+      sprintf (stringBuffer, "%.2f", g_weatherPressureRel);
+      client.publish("yaows32/airpressure", stringBuffer, true);
+
+      sprintf (stringBuffer, "%.2f", g_weatherRainFall);
+      client.publish("yaows32/rainfall", stringBuffer, true);
+
+      sprintf (stringBuffer, "%.2f", g_weatherRainFallDaily);
+      client.publish("yaows32/rainfalldaily", stringBuffer, true);
+
+      sprintf (stringBuffer, "%.2f", g_weatherRainRate);
+      client.publish("yaows32/rainrate", stringBuffer, true);
+
+      sprintf (stringBuffer, "%.2f", g_weatherWindAvg);
+      client.publish("yaows32/windspeed", stringBuffer, true);
+
+      sprintf (stringBuffer, "%.2f", g_weatherWindDir);
+      client.publish("yaows32/winddir", stringBuffer, true);
+
+      sprintf (stringBuffer, "%.2f", g_weatherWindGust);
+      client.publish("yaows32/windgust", stringBuffer, true);
+    
+      // ... and resubscribe (plan to implement OTA update mechanism)
+      //client.subscribe("otaUpdate");
+    
+    } else {
+        #if DEBUG
+          Serial.print("\tConnection failed. Reason code=");
+          Serial.println(client.state());
+        #endif
+    }
+  }
+ 
+}
 
 void sendCloudDataWeatherCloud()
 {
