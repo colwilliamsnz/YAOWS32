@@ -69,7 +69,7 @@ V = P(2.500/T) where:
 */
 
 // Wind gust period in seconds. This is the sample time for measuring wind gusts
-// Note that if this value is changed, the SLAVE ATTiny84 code must be updated!
+// Note that if this value is changed, the SLAVE ATTiny85 code must be updated!
 // Whole values are best and sample time of 6s found to be ideal in testing with
 // a signal generator to simulate the pulses at various frequencies.
 constexpr   float           g_stationWindGustPeriod     = 6.0F;
