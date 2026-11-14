@@ -21,11 +21,13 @@
 * Consider: Refactor cloud publishing code - 95% is similar so move it to function
 * ~Fix PWSWeather function--missing wind data~
 * ~Add "test harnis" for cloud publishing services~
+* Bug: g_stationWindVaneOffset (station.cpp) is defined but never applied - add it to the wind direction in getSlave() (wrap to 0-359)
 
-## "Worker" ATTiny84 Code
+## "Worker" ATTiny85 Code
 
 * ~Add reference for Fine Offset wind direction http://mile-end.co.uk/blog/bits/Weather-Sensor-Assembly.pdf~
 * Add instantaneous wind speed and direction (repurpose wind gust code -- report the last 6s wind gust recorded for the period).
+* Bug: wind direction lookup writes past the end of windDirTot[] when the vane ADC reading is >= the last reading[] entry (1020 for Davis) - clamp index to COMPASS_DIRECTIONS - 1
 
 ## Electronics
 
