@@ -90,7 +90,7 @@ void sendCloudDataMQTT()
       sprintf (stringBuffer, "%.2f", g_weatherWindGust);
       client.publish("yaows32/windgust", stringBuffer, true);
     
-      // ... and resubscribe (plan to implement OTA update mechanism)
+      // ... and resubscribe (future plan to implement OTA update mechanism)
       //client.subscribe("otaUpdate");
     
     } else {

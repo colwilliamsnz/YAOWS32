@@ -14,7 +14,7 @@ constexpr   int             g_stationUpdatePeriod       = 10;
 #else
 // debugging is easier if wake & update are more regular! Set this compiler
 // directive in debug.h
-constexpr   int             g_stationUpdatePeriod       = 2;
+constexpr   int             g_stationUpdatePeriod       = 10;
 #endif
 
 // time in 24 hour format that weather stats needs to be reset (default = 

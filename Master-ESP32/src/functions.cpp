@@ -276,8 +276,8 @@ void getSensors()
   getSensorBMP180();  // Pressure sensor
   getSensorBME280();  // Pressure, Temp & Hum sensor
   getSensorDHT22();   // Temp/Hum sensor
-  getSensorAM2315();  // Temp/Hum sensor
-  getSensorDS18B20(); // Soil temp sensor
+  //getSensorAM2315();  // Temp/Hum sensor
+  //getSensorDS18B20(); // Soil temp sensor
 }
 
 
@@ -481,6 +481,17 @@ void getNTPTime()
     Serial.println();
     Serial.println(F("Updating time from NTP server..."));
   #endif
+
+  IPAddress ip;
+  Serial.print("DNS server: ");
+  Serial.println(WiFi.dnsIP());
+
+  if (WiFi.hostByName(g_ntpServer1, ip) == 1) {
+    Serial.print("Resolved to: ");
+    Serial.println(ip);
+  } else {
+    Serial.println("DNS lookup failed");
+  }
 
   configTzTime(g_ntpTimeZone, g_ntpServer1, g_ntpServer2, g_ntpServer3);
 

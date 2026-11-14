@@ -71,11 +71,11 @@ void loop()
 
   getNTPTime();
 
-  //sendCloudDataMQTT();
+  sendCloudDataMQTT();
 
   //sendCloudDataWeatherUnderground();
 
-  //sendCloudDataWeatherCloud();
+  sendCloudDataWeatherCloud();
 
   //sendCloudDataPWSWeather();
 
