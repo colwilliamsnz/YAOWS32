@@ -23,4 +23,8 @@ extern  const   char            g_ntpTimeZone[];
 
 extern  const   int             g_ntpCheckInterval;
 
+extern  const   int             g_maintWindowSecs;
+extern  const   int             g_maintMaxSecs;
+extern  const   float           g_maintMinBattV;
+
 #endif

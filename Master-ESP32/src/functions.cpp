@@ -10,6 +10,8 @@
 #include "cloud.h"
 
 #include "gpio.h"
+#include "log.h"
+#include "buildprofile.h"
 
 #include <Arduino.h>
 
@@ -22,7 +24,6 @@
 #include <Adafruit_Sensor.h>
 #include <Adafruit_BME280.h>
 #include <Adafruit_BMP085.h>
-//#include <Adafruit_AM2315.h>
 #include <dht.h>
 #include <Adafruit_INA219.h>
 #include <DallasTemperature.h>
@@ -34,25 +35,25 @@ void getDerivedMeasurements()
   g_weatherTempWindChillC = calcWindChillC(g_weatherTempAirC, g_weatherWindAvg);
 
   #if DEBUG
-    Serial.println();
-    Serial.print(F("\tDew Point: \t\t"));
-    Serial.print(g_weatherDewPointC);
-    Serial.println(" °C");
-    Serial.print(F("\tHeat Index: \t\t"));
-    Serial.print(g_weatherHeatIndexC);
-    Serial.println(" °C");
-    Serial.print(F("\tWind Chill: \t\t"));
-    Serial.print(g_weatherTempWindChillC);
-    Serial.println(" °C");
-    Serial.print(F("\tRainfall: \t\t"));
-    Serial.print(g_weatherRainFall);
-    Serial.println(" mm");
-    Serial.print("\tRainfall (daily): \t");
-    Serial.print(g_weatherRainFallDaily);
-    Serial.println(" mm");
-    Serial.print(F("\tRain Rate: \t\t"));
-    Serial.print(g_weatherRainRate);
-    Serial.println(" mm/hr");
+    Log.println();
+    Log.print(F("\tDew Point: \t\t"));
+    Log.print(g_weatherDewPointC);
+    Log.println(" °C");
+    Log.print(F("\tHeat Index: \t\t"));
+    Log.print(g_weatherHeatIndexC);
+    Log.println(" °C");
+    Log.print(F("\tWind Chill: \t\t"));
+    Log.print(g_weatherTempWindChillC);
+    Log.println(" °C");
+    Log.print(F("\tRainfall: \t\t"));
+    Log.print(g_weatherRainFall);
+    Log.println(" mm");
+    Log.print("\tRainfall (daily): \t");
+    Log.print(g_weatherRainFallDaily);
+    Log.println(" mm");
+    Log.print(F("\tRain Rate: \t\t"));
+    Log.print(g_weatherRainRate);
+    Log.println(" mm/hr");
   #endif
 } // end function getDerivedMeasurements ***************************************
 
@@ -95,9 +96,16 @@ void setupSensorsOnboard()
  */
 void setupSensorsExternal()
 {
-  g_sensorStatusBME280 = sensor_bme280.begin(); // i2c1 BME280 sensor pressure, temp & hum sensor
+  //g_sensorStatusBME280 = sensor_bme280.begin(); // i2c1 BME280 sensor pressure, temp & hum sensor (not fitted)
   g_sensorStatusBMP180 = sensor_bmp180.begin(); // i2c1 BMP180 sensor pressure
-  sensor_dht22.begin();                         // 1Wire dht22 temp & hum sensor
+  //sensor_dht22.begin();                       // 1Wire dht22 temp & hum sensor (not fitted)
+
+  // i2c1 AM2315 temp & hum sensor (the station's air temp/humidity sensor)
+  if (!sensor_am2315.begin())
+  {
+    Log.println(F("\tAM2315 not found on I2C bus, check wiring!"));
+  }
+
   sensor_ds18b20.begin();                       // 1Wire ds18b20 waterproof temp sensor
 } // end function setupSensorsExternal *****************************************
 
@@ -116,23 +124,25 @@ void killWiFi()
   digitalWrite(OUTPUT_LED_WIFI, LOW);
 
   #if DEBUG
-    Serial.println();
-    Serial.print(F("Killing WiFi connection"));
-    Serial.println();
+    Log.println();
+    Log.print(F("Killing WiFi connection"));
+    Log.println();
   #endif
 } // end function killWiFi *****************************************************
 
 
 /**
- * @brief Put ESP32 into light sleep mode to save battery power between updates
+ * @brief Seconds from now until the next scheduled update (aligned to the clock,
+ * eg 8:10, 8:20...). Used by initSleep() and by the maintenance window so both
+ * keep the same schedule.
+ * @param wakeOut (optional) receives the wake up date/time
  */
-void initSleep()
+double secondsUntilNextWake(struct tm *wakeOut)
 {
   struct tm timeNow; // time structure for current time
   getLocalTime(&timeNow);
 
-  struct tm timeWakeup; // time stucture for next wake up time
-  getLocalTime(&timeWakeup);
+  struct tm timeWakeup = timeNow; // time stucture for next wake up time
 
   // create new wakeup time based on update interval
   int nextWakeupMinute = getNextWakeupMinute(timeWakeup.tm_min, g_stationUpdatePeriod);
@@ -142,18 +152,33 @@ void initSleep()
   timeWakeup.tm_min = nextWakeupMinute;
   timeWakeup.tm_sec = 0;
 
-  // calculate the difference between time as an offset in seconds and sleep for
-  // this amount of time
+  // calculate the difference between time as an offset in seconds
   double offsetSeconds = difftime(mktime(&timeWakeup), mktime(&timeNow));
 
+  if (wakeOut) *wakeOut = timeWakeup;
+
+  return offsetSeconds;
+} // end function secondsUntilNextWake *****************************************
+
+
+/**
+ * @brief Put ESP32 into light sleep mode to save battery power between updates
+ */
+void initSleep()
+{
+  struct tm timeWakeup; // time stucture for next wake up time
+
+  // sleep for this amount of time
+  double offsetSeconds = secondsUntilNextWake(&timeWakeup);
+
   #if DEBUG
-    Serial.println();
-    Serial.println(F("Entering power save light sleep mode..."));
-    Serial.print(F("\tWakeup interval: \t"));
-    Serial.print(g_stationUpdatePeriod);
-    Serial.println(F(" minutes"));
-    Serial.println(&timeWakeup, "\tNext wakeup datetime:\t%Y/%m/%d %H:%M:%S");
-    Serial.flush();
+    Log.println();
+    Log.println(F("Entering power save light sleep mode..."));
+    Log.print(F("\tWakeup interval: \t"));
+    Log.print(g_stationUpdatePeriod);
+    Log.println(F(" minutes"));
+    Log.println(&timeWakeup, "\tNext wakeup datetime:\t%Y/%m/%d %H:%M:%S");
+    Log.flush();
   #endif
 
   // Light sleep for number of seconds required to hit the next update period in
@@ -162,8 +187,8 @@ void initSleep()
   esp_light_sleep_start();
   
   #if DEBUG
-    Serial.println("");
-    Serial.println("Waking up...");
+    Log.println("");
+    Log.println("Waking up...");
   #endif
 } // end function initSleep ****************************************************
 
@@ -204,12 +229,13 @@ void initWiFi()
    // If we're not connected, connect
   if (_statusWiFi != 3)
   {
+    WiFi.setHostname(DEVICE_HOSTNAME); // must be set before WiFi.begin()
     WiFi.begin(g_wiFiSSID, g_wiFiPass);
 
     #if DEBUG
-      Serial.println();
-      Serial.print(F("Attempting WiFi connection to SSID "));
-      Serial.print(g_wiFiSSID);
+      Log.println();
+      Log.print(F("Attempting WiFi connection to SSID "));
+      Log.print(g_wiFiSSID);
     #endif
 
     int WLanCount = 0;
@@ -221,7 +247,7 @@ void initWiFi()
       delay(500);
 
       #if DEBUG
-            Serial.printf(".");
+            Log.printf(".");
       #endif
 
       ++WLanCount;
@@ -243,10 +269,10 @@ void initWiFi()
     {
       // Put ESP32 into deep sleep mode for the update interval period
       #if DEBUG
-        Serial.println();
-        Serial.print(F("\tFailed to connect to WiFi. Sleeping for "));
-        Serial.print(g_stationUpdatePeriod);
-        Serial.println(F(" minutes to conserve battery."));
+        Log.println();
+        Log.print(F("\tFailed to connect to WiFi. Sleeping for "));
+        Log.print(g_stationUpdatePeriod);
+        Log.println(F(" minutes to conserve battery."));
       #endif
 
       initSleep();
@@ -262,21 +288,21 @@ void initWiFi()
 void getSensors()
 {
   #if DEBUG
-    Serial.println();
-    Serial.println(F("Reading sensors...onboard..."));
+    Log.println();
+    Log.println(F("Reading sensors...onboard..."));
   #endif
 
   getSensorINA219(); // Voltage/current sensor
 
   #if DEBUG
-    Serial.println();
-    Serial.println(F("Reading sensors...external..."));
+    Log.println();
+    Log.println(F("Reading sensors...external..."));
   #endif
 
   getSensorBMP180();  // Pressure sensor
-  getSensorBME280();  // Pressure, Temp & Hum sensor
-  getSensorDHT22();   // Temp/Hum sensor
-  //getSensorAM2315();  // Temp/Hum sensor
+  //getSensorBME280(); // Pressure, Temp & Hum sensor (not fitted)
+  //getSensorDHT22();  // 1-wire Temp/Hum sensor (not fitted)
+  getSensorAM2315();    // I2C Temp/Hum sensor - air temp & humidity
   //getSensorDS18B20(); // Soil temp sensor
 }
 
@@ -285,18 +311,18 @@ void getSensors()
 void getWiFiInfo() //////////////////// TODO TODO should be named "printWiFiInfo"
 {
   #if DEBUG
-    Serial.println();
-    Serial.printf("\tSSID:\t\t\t%s, ", WiFi.SSID().c_str());
-    Serial.print(WiFi.RSSI());
-    Serial.println(" dBm");
-    Serial.print("\tIP address:\t\t");
-    Serial.print(WiFi.localIP());
-    Serial.print(" / ");
-    Serial.println(WiFi.subnetMask());
-    Serial.print("\tGateway:\t\t");
-    Serial.println(WiFi.gatewayIP());
-    Serial.print("\tDNS:\t\t\t");
-    Serial.println(WiFi.dnsIP());
+    Log.println();
+    Log.printf("\tSSID:\t\t\t%s, ", WiFi.SSID().c_str());
+    Log.print(WiFi.RSSI());
+    Log.println(" dBm");
+    Log.print("\tIP address:\t\t");
+    Log.print(WiFi.localIP());
+    Log.print(" / ");
+    Log.println(WiFi.subnetMask());
+    Log.print("\tGateway:\t\t");
+    Log.println(WiFi.gatewayIP());
+    Log.print("\tDNS:\t\t\t");
+    Log.println(WiFi.dnsIP());
   #endif
 }
 
@@ -306,35 +332,35 @@ int getWiFiStatus()
   int WiFiStatus = WiFi.status();
   
   #if DEBUG
-    Serial.println();
-    Serial.println(F("Checking WiFi..."));
-    Serial.printf("\tStatus:\t\t\t%d", WiFiStatus);
+    Log.println();
+    Log.println(F("Checking WiFi..."));
+    Log.printf("\tStatus:\t\t\t%d", WiFiStatus);
 
     switch (WiFiStatus)
     {
     case WL_IDLE_STATUS:      // WL_IDLE_STATUS = 0
-      Serial.printf(", WiFi IDLE\n");
+      Log.printf(", WiFi IDLE\n");
       break;
     case WL_NO_SSID_AVAIL:    // WL_NO_SSID_AVAIL = 1
-      Serial.printf(", NO SSID AVAIL\n");
+      Log.printf(", NO SSID AVAIL\n");
       break;
     case WL_SCAN_COMPLETED:   // WL_SCAN_COMPLETED = 2
-      Serial.printf(", WiFi SCAN_COMPLETED\n");
+      Log.printf(", WiFi SCAN_COMPLETED\n");
       break;
     case WL_CONNECTED:        // WL_CONNECTED = 3
-      Serial.printf(", WiFi CONNECTED\n");
+      Log.printf(", WiFi CONNECTED\n");
       break;
     case WL_CONNECT_FAILED:   // WL_CONNECT_FAILED = 4
-      Serial.printf(", WiFi WL_CONNECT FAILED\n");
+      Log.printf(", WiFi WL_CONNECT FAILED\n");
       break;
     case WL_CONNECTION_LOST:  // WL_CONNECTION_LOST = 5
-      Serial.printf(", WiFi CONNECTION LOST\n");
+      Log.printf(", WiFi CONNECTION LOST\n");
       break;
     case WL_DISCONNECTED:     // WL_DISCONNECTED = 6
-      Serial.printf(", WiFi DISCONNECTED\n");
+      Log.printf(", WiFi DISCONNECTED\n");
       break;
     case WL_NO_SHIELD:        // WL_DISCONNECTED = 255
-      Serial.printf(", WiFi NOT INITALIZED\n");
+      Log.printf(", WiFi NOT INITALIZED\n");
       break;
     }
   #endif
@@ -369,18 +395,20 @@ void initStartup()
     digitalWrite(OUTPUT_LED_MISC_2, !digitalRead(OUTPUT_LED_MISC_2));
 
     #if DEBUG
-      Serial.printf(".");
+      Log.printf(".");
     #endif
   }
 
   #if DEBUG
-    Serial.println("");
-    Serial.print("YAOWS32 Weather Station | ");
-    Serial.print(VERSION);
-    Serial.print(" | Compiled on ");
-    Serial.print(__DATE__);
-    Serial.print(" @ ");
-    Serial.println(__TIME__);
+    Log.println("");
+    Log.print("YAOWS32 Weather Station | ");
+    Log.print(VERSION);
+    Log.print(" | ");
+    Log.print(DEVICE_PROFILE);
+    Log.print(" | Compiled on ");
+    Log.print(__DATE__);
+    Log.print(" @ ");
+    Log.println(__TIME__);
   #endif
 } // end function displayStartup **********************************************
 
@@ -392,14 +420,29 @@ void initStartup()
 void getSlave()
 {
   #if DEBUG
-    Serial.println("");
-    Serial.println("Reading ATTiny85 Slave...");
+    Log.println("");
+    Log.println("Reading ATTiny85 Slave...");
   #endif
 
-  Wire1.requestFrom(0x4, 8); // request 8 bytes from slave device
+  // request 8 bytes from slave device
+  uint8_t bytesReceived = Wire1.requestFrom((uint8_t)0x4, (uint8_t)8);
+
+  if (bytesReceived != 8)
+  {
+    // Slave missing (eg desktop test rig) or bus error - don't interpret junk
+    while (Wire1.available()) Wire1.read();
+
+    g_weatherRainRate = 0;
+    g_weatherRainFall = 0;
+    g_weatherWindAvg  = 0;
+    g_weatherWindGust = 0;
+
+    Log.printf("\tSlave not responding (%u of 8 bytes) - wind/rain set to 0\n", bytesReceived);
+    return;
+  }
 
   int i = 0; // counter for each byte as it arrives
-  while (Wire1.available())
+  while (Wire1.available() && i < 8)
   {
     g_slaveRecord[i] = Wire1.read();
     i = i + 1;
@@ -436,21 +479,21 @@ void getSlave()
   g_weatherWindDir = rawWindDir;
 
   #if DEBUG
-    Serial.print("\tWind Dir (avg): \t");
-    Serial.print(rawWindDir);
-    Serial.println(" deg");
-    Serial.print("\tWind Speed (raw): \t");
-    Serial.println(rawWindSpd);
-    Serial.print("\tWind Speed (calc): \t");
-    Serial.print(windSpeed);
-    Serial.println(" km/h");
-    Serial.print("\tWind Gust (raw): \t");
-    Serial.println(rawWindGst);
-    Serial.print("\tWind Gust (calc): \t");
-    Serial.print(windGustSpeed);
-    Serial.println(" km/h");
-    Serial.print("\tRain Tip Count: \t");
-    Serial.println(rawRainCnt);
+    Log.print("\tWind Dir (avg): \t");
+    Log.print(rawWindDir);
+    Log.println(" deg");
+    Log.print("\tWind Speed (raw): \t");
+    Log.println(rawWindSpd);
+    Log.print("\tWind Speed (calc): \t");
+    Log.print(windSpeed);
+    Log.println(" km/h");
+    Log.print("\tWind Gust (raw): \t");
+    Log.println(rawWindGst);
+    Log.print("\tWind Gust (calc): \t");
+    Log.print(windGustSpeed);
+    Log.println(" km/h");
+    Log.print("\tRain Tip Count: \t");
+    Log.println(rawRainCnt);
   #endif
 } // end function getSlave ****************************************************
 
@@ -467,10 +510,10 @@ void getNTPTime()
     g_ntpCheckIntervalTimer -= g_stationUpdatePeriod;
 
     #if DEBUG
-        Serial.println();
-        Serial.print(F("Skipping NTP time sync...next update in "));
-        Serial.print(g_ntpCheckIntervalTimer + g_stationUpdatePeriod);
-        Serial.println(F(" minutes"));
+        Log.println();
+        Log.print(F("Skipping NTP time sync...next update in "));
+        Log.print(g_ntpCheckIntervalTimer + g_stationUpdatePeriod);
+        Log.println(F(" minutes"));
     #endif
     
     return;
@@ -478,19 +521,19 @@ void getNTPTime()
 
   // perform the NTP check...
   #if DEBUG
-    Serial.println();
-    Serial.println(F("Updating time from NTP server..."));
+    Log.println();
+    Log.println(F("Updating time from NTP server..."));
   #endif
 
   IPAddress ip;
-  Serial.print("DNS server: ");
-  Serial.println(WiFi.dnsIP());
+  Log.print("DNS server: ");
+  Log.println(WiFi.dnsIP());
 
   if (WiFi.hostByName(g_ntpServer1, ip) == 1) {
-    Serial.print("Resolved to: ");
-    Serial.println(ip);
+    Log.print("Resolved to: ");
+    Log.println(ip);
   } else {
-    Serial.println("DNS lookup failed");
+    Log.println("DNS lookup failed");
   }
 
   configTzTime(g_ntpTimeZone, g_ntpServer1, g_ntpServer2, g_ntpServer3);
@@ -500,14 +543,14 @@ void getNTPTime()
   if (!getLocalTime(&timeinfo))
   {
     #if DEBUG
-        Serial.println("\tFailed");
+        Log.println("\tFailed");
     #endif
 
     return;
   }
 
   #if DEBUG
-    Serial.println(&timeinfo, "\tGot datetime: \t\t%Y/%m/%d %H:%M:%S");
+    Log.println(&timeinfo, "\tGot datetime: \t\t%Y/%m/%d %H:%M:%S");
   #endif
 
   g_ntpCheckIntervalTimer = g_ntpCheckInterval; // reset the interval timer now that we got a valid time from NTP
@@ -527,14 +570,14 @@ void getSensorDHT22()
   g_weatherHumidity = _hum;
 
 #if DEBUG
-  Serial.print("\tDHT22 Temp:\t\t");
-  Serial.print(_temp);
-  Serial.print(" °C");
-  Serial.println();
-  Serial.print("\tDHT22 Hum:\t\t");
-  Serial.print(_hum);
-  Serial.print(" %");
-  Serial.println();
+  Log.print("\tDHT22 Temp:\t\t");
+  Log.print(_temp);
+  Log.print(" °C");
+  Log.println();
+  Log.print("\tDHT22 Hum:\t\t");
+  Log.print(_hum);
+  Log.print(" %");
+  Log.println();
 #endif
 } // end function getSensorDHT22 **********************************************
 
@@ -545,21 +588,37 @@ void getSensorDHT22()
  */
 void getSensorAM2315()
 {
-  float _temp = sensor_am2315.readTemperature();
-  float _hum = sensor_am2315.readHumidity();
+  float _temp = NAN;
+  float _hum = NAN;
+
+  // One I2C transaction for both values. The library refuses reads less than
+  // 2s apart (and begin() takes a test reading), so retry once after 2.1s.
+  bool ok = sensor_am2315.readTemperatureAndHumidity(&_temp, &_hum);
+  if (!ok)
+  {
+    delay(2100);
+    ok = sensor_am2315.readTemperatureAndHumidity(&_temp, &_hum);
+  }
+
+  if (!ok)
+  {
+    _temp = NAN;
+    _hum = NAN;
+    Log.println(F("\tAM2315 read FAILED"));
+  }
 
   g_weatherTempAirC = _temp;
   g_weatherHumidity = _hum;
 
 #if DEBUG
-  Serial.print("\tAM2315 Temp:\t\t");
-  Serial.print(_temp);
-  Serial.print(" °C");
-  Serial.println();
-  Serial.print("\tAM2315 Hum:\t\t");
-  Serial.print(_hum);
-  Serial.print(" %");
-  Serial.println();
+  Log.print("\tAM2315 Temp:\t\t");
+  Log.print(_temp);
+  Log.print(" °C");
+  Log.println();
+  Log.print("\tAM2315 Hum:\t\t");
+  Log.print(_hum);
+  Log.print(" %");
+  Log.println();
 #endif
 } // end function getSensorAM2315 **********************************************
 
@@ -577,10 +636,10 @@ void getSensorDS18B20()
   g_weatherTempSoilC = _temp;
 
 #if DEBUG
-  Serial.print("\tDS18B20 Temp:\t\t");
-  Serial.print(_temp);
-  Serial.print(" °C");
-  Serial.println();
+  Log.print("\tDS18B20 Temp:\t\t");
+  Log.print(_temp);
+  Log.print(" °C");
+  Log.println();
 #endif
 } // end function getSensorDS18B20 ********************************************
 
@@ -594,7 +653,7 @@ void getSensorBME280()
   if (!g_sensorStatusBME280)
   {
     #ifdef DEBUG
-      Serial.println("\tCould not find a valid BME280 sensor, check wiring!");
+      Log.println("\tCould not find a valid BME280 sensor, check wiring!");
     #endif
     
     return;
@@ -608,22 +667,22 @@ void getSensorBME280()
   g_weatherPressureRel = _press + g_stationAltitude / 8.3; // formula to convert abs to rel (altitude / 8.3)
 
   #if DEBUG
-    Serial.print(F("\tBME280 Temp: \t\t"));
-    Serial.print(_temp);
-    Serial.print(" °C");
-    Serial.println();
-    Serial.print(F("\tBME280 Hum: \t\t"));
-    Serial.print(_hum);
-    Serial.print(" %");
-    Serial.println();
-    Serial.print(F("\tBME280 Press: \t\t"));
-    Serial.print(_press);
-    Serial.print(" hPa (Abs)");
-    Serial.println();
-    Serial.print(F("\tBME280 Press: \t\t"));
-    Serial.print(g_weatherPressureRel);
-    Serial.print(" hPa (Rel)");
-    Serial.println();
+    Log.print(F("\tBME280 Temp: \t\t"));
+    Log.print(_temp);
+    Log.print(" °C");
+    Log.println();
+    Log.print(F("\tBME280 Hum: \t\t"));
+    Log.print(_hum);
+    Log.print(" %");
+    Log.println();
+    Log.print(F("\tBME280 Press: \t\t"));
+    Log.print(_press);
+    Log.print(" hPa (Abs)");
+    Log.println();
+    Log.print(F("\tBME280 Press: \t\t"));
+    Log.print(g_weatherPressureRel);
+    Log.print(" hPa (Rel)");
+    Log.println();
   #endif
 } // end function getSensorBME280 *********************************************
 
@@ -636,7 +695,7 @@ void getSensorBMP180()
   if (!g_sensorStatusBMP180)
   {
     #if DEBUG
-      Serial.println("\tCould not find a valid BMP180 sensor, check wiring!");
+      Log.println("\tCould not find a valid BMP180 sensor, check wiring!");
     #endif
 
     return; // exit early - sensor is likely not connected
@@ -647,21 +706,21 @@ void getSensorBMP180()
   g_weatherPressureAbs = _press;
   g_weatherPressureRel = _press + g_stationAltitude / 8.3; // formula to convert abs to rel (altitude / 8.3)
 
-  float _altitude = sensor_bmp180.readAltitude(g_stationPressureCal); // get altitude from nearest observation weather station for new install location
+  float _altitude = sensor_bmp180.readAltitude(g_stationPressureCal * 100.0F); // hPa -> Pa (library expects Pa). Estimates altitude from nearest observation station's sea-level pressure (for a new install location)
 
   #if DEBUG
-    Serial.print(F("\tBMP180 Press: \t\t"));
-    Serial.print(_press);
-    Serial.print(" hPa (Abs)");
-    Serial.println();
-    Serial.print(F("\tBMP180 Press: \t\t"));
-    Serial.print(g_weatherPressureRel);
-    Serial.print(" hPa (Rel)");
-    Serial.println();
-    Serial.print(F("\tBMP180 Alt: \t\t"));
-    Serial.print(_altitude);
-    Serial.print(" m");
-    Serial.println();
+    Log.print(F("\tBMP180 Press: \t\t"));
+    Log.print(_press);
+    Log.print(" hPa (Abs)");
+    Log.println();
+    Log.print(F("\tBMP180 Press: \t\t"));
+    Log.print(g_weatherPressureRel);
+    Log.print(" hPa (Rel)");
+    Log.println();
+    Log.print(F("\tBMP180 Alt: \t\t"));
+    Log.print(_altitude);
+    Log.print(" m");
+    Log.println();
   #endif
 } // end getSensorBMP180 ******************************************************
 
@@ -675,14 +734,14 @@ void getSensorINA219()
   g_stationBatteryCurrent = sensor_ina219.getCurrent_mA();
 
   #if DEBUG
-    Serial.print(F("\tINA219 Batt: \t\t"));
-    Serial.print(g_stationBatteryVoltage);
-    Serial.print(" V");
-    Serial.println();
-    Serial.print(F("\tINA219 Curr: \t\t"));
-    Serial.print(g_stationBatteryCurrent);
-    Serial.print(" mA");
-    Serial.println();
+    Log.print(F("\tINA219 Batt: \t\t"));
+    Log.print(g_stationBatteryVoltage);
+    Log.print(" V");
+    Log.println();
+    Log.print(F("\tINA219 Curr: \t\t"));
+    Log.print(g_stationBatteryCurrent);
+    Log.print(" mA");
+    Log.println();
   #endif
 } // end getSensorINA219 ******************************************************
 
@@ -696,7 +755,7 @@ void displayESP32DateTime()
     struct tm timeinfo;
     getLocalTime(&timeinfo);
 
-    Serial.println(&timeinfo, "\tESP32 RTC datetime:\t%Y/%m/%d %H:%M:%S");
+    Log.println(&timeinfo, "\tESP32 RTC datetime:\t%Y/%m/%d %H:%M:%S");
   #endif
 } // end function displayESP32Time ********************************************
 
@@ -708,31 +767,31 @@ void displayESP32DateTime()
 void resetDay()
 {
   #if DEBUG
-    Serial.println();
-    Serial.println(F("Checking reset of daily stats..."));
+    Log.println();
+    Log.println(F("Checking reset of daily stats..."));
   #endif
   
   struct tm timeNow;
   getLocalTime(&timeNow);
 
-  char timeCheck[] = ""; // char array we will assemble tm struct for comparison with configured reset time
-  sprintf(timeCheck, "%02d:%02d", timeNow.tm_hour, timeNow.tm_min);
+  char timeCheck[6]; // "HH:MM" + null. char array we will assemble tm struct for comparison with configured reset time
+  snprintf(timeCheck, sizeof(timeCheck), "%02d:%02d", timeNow.tm_hour, timeNow.tm_min);
 
   if (strcmp(timeCheck, g_stationDailyResetTime) == 0) // char arrays match, its time to reset the daily stats
   {
     g_weatherRainFallDaily = 0; // reset daily accumulated rainfall
       #if DEBUG
-      Serial.print(F("\tCurrent time matches configured time ("));
-      Serial.print(g_stationDailyResetTime);
-      Serial.println(F(")--resetting"));
+      Log.print(F("\tCurrent time matches configured time ("));
+      Log.print(g_stationDailyResetTime);
+      Log.println(F(")--resetting"));
     #endif
   }
   else
   {
     #if DEBUG
-      Serial.print(F("\tCurrent time doesn't match configured time ("));
-      Serial.print(g_stationDailyResetTime);
-      Serial.println(F(")--skipping"));
+      Log.print(F("\tCurrent time doesn't match configured time ("));
+      Log.print(g_stationDailyResetTime);
+      Log.println(F(")--skipping"));
     #endif
   }
 } // end function resetDay ****************************************************

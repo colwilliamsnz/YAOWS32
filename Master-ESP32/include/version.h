@@ -1,9 +1,37 @@
 #ifndef VERSION_H
 #define VERSION_H
 
-#define VERSION "1.1.0"
+#define VERSION "1.2.0"
 
 /*** Version log ***************************************************************
+
+1.2.0 - OTA updates, web log page and desktop test rig
+
+- Maintenance window: on power-on/EN reset and on the first boot after a
+    firmware upload (not other software resets, brown-outs or crashes) WiFi
+    stays up for g_maintWindowSecs and serves a status
+    page (http://yaows32.local/), ElegantOTA firmware upload (/update) and a
+    console log page (/log, refresh to update). Extended automatically while
+    the status page is open or an upload is running. Login in passwords.cpp.
+    Normal measure/upload cycles keep running on the usual clock-aligned
+    schedule while the window is open (live readings in the log, no gaps in
+    cloud data).
+
+- All console output goes through "Log" (Serial + 16KB RAM history served as
+    the /log page).
+
+- OTA rollback: new firmware must complete a full cycle with WiFi before it is
+    marked valid, otherwise the bootloader reverts to the previous image.
+
+- New PlatformIO env "testrig": cloud updates are a dry-run (payloads printed,
+    nothing sent), hostname yaows32-test, fast cycle, longer window.
+
+- Partition table changed to min_spiffs.csv (1.9MB OTA slots) - requires one
+    USB flash.
+
+- Fixes: DEBUG_FAST had no effect (both branches were 10 min); resetDay()
+    sprintf into a 1 byte buffer; MQTT RSSI formatted an int with %f; windchill
+    published twice; getSlave() now checks the ATTiny actually answered.
 
 1.1.0 - Misc updates and improvements
 

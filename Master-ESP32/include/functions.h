@@ -35,6 +35,7 @@ void    initRTC();
 void    getNTPTime();
 
 void    initSleep();
+double  secondsUntilNextWake(struct tm *wakeOut);
 
 void    setupI2C();
 

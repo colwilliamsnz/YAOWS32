@@ -3,6 +3,7 @@
 #include "passwords.h"
 
 #include "station.h"
+#include "buildprofile.h"
 
 // === Weather station specifics ===============================================
 
@@ -13,8 +14,8 @@
 constexpr   int             g_stationUpdatePeriod       = 10;
 #else
 // debugging is easier if wake & update are more regular! Set this compiler
-// directive in debug.h
-constexpr   int             g_stationUpdatePeriod       = 10;
+// directive in debug.h (TEST_RIG builds always use it)
+constexpr   int             g_stationUpdatePeriod       = 2;
 #endif
 
 // time in 24 hour format that weather stats needs to be reset (default = 
@@ -28,7 +29,7 @@ constexpr   float           g_stationAltitude           = 220;
 // If the altitude is not known, enter the nearest stations relative pressure in
 // hPa and view the debug console to get  an estimate of the station altitude to
 // enter into g_stationAltitude above
-constexpr   float           g_stationPressureCal        = 1031.00;
+constexpr   float           g_stationPressureCal        = 1019.00;
 
 // Rain bucket volume - the amount of rain that has fallen when the rain sensor
 // bucket tips once. Measured in mm.
@@ -97,3 +98,25 @@ constexpr   char            g_ntpTimeZone[]             = "NZST-12NZDT,M9.5.0,M4
 
 // minutes between RTC updates from NTP time server
 constexpr   int             g_ntpCheckInterval          = 120;
+
+
+// === Maintenance (OTA + web console) window ==================================
+// On power-on / EN button reset the station stays awake with WiFi on for this
+// many seconds so firmware can be uploaded (http://<hostname>.local/update) and
+// the console log viewed (http://<hostname>.local/log). The window is
+// automatically extended while the status page is open or an upload is in
+// progress, up to g_maintMaxSecs.
+#if !TEST_RIG
+constexpr   int             g_maintWindowSecs           = 120;
+constexpr   int             g_maintMaxSecs              = 900;
+#else
+constexpr   int             g_maintWindowSecs           = 240;  // 4 min - extend from the page if needed
+constexpr   int             g_maintMaxSecs              = 3600;
+#endif
+
+// Skip the maintenance window if the battery (INA219 bus voltage) is below this
+// value - avoids a brown-out loop on a flat battery. 0 = check disabled.
+// Set to suit your battery chemistry/voltage (eg 3.5 for 1S Li-ion, 11.8 for a
+// 12V SLA). Readings below 1V are treated as "no INA219 fitted" and ignored.
+constexpr   float           g_maintMinBattV             = 0.0F;
+

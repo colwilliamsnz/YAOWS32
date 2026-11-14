@@ -7,6 +7,10 @@
 extern  char    g_wiFiSSID[];
 extern  char    g_wiFiPass[];
 
+// *** OTA / web console login ************************************************
+extern  char    g_otaUser[];
+extern  char    g_otaPass[];
+
 // *** Cloud service, MQTT specifics *******************************************
 extern  char    g_cloudServiceMQTTServer[];
 extern  uint16_t     g_cloudServiceMQTTPort;

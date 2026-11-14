@@ -10,97 +10,90 @@
 #include "cloud.h"
 
 #include "gpio.h"
+#include "log.h"
+#include "buildprofile.h"
 
 #include <Arduino.h>
 #include <PubSubClient.h>
 
+/**
+ * @brief Publish one retained value, or just print it in dry-run mode
+ */
+static void mqttPublish(PubSubClient &client, const char *topic, float value)
+{
+  // never overwrite a retained topic with "nan" from a failed sensor read
+  if (isnan(value))
+  {
+    Log.printf("\t[skip] %-28s nan\n", topic);
+    return;
+  }
+
+  char stringBuffer[16];
+  snprintf(stringBuffer, sizeof(stringBuffer), "%.2f", value);
+
+  #if CLOUD_DRY_RUN
+    Log.printf("\t[dry-run] %-28s %s\n", topic, stringBuffer);
+  #else
+    client.publish(topic, stringBuffer, true);
+  #endif
+}
+
 void sendCloudDataMQTT()
 {
   #if DEBUG
-    Serial.println();
-    Serial.println(F("Posting data to MQTT..."));
+    Log.println();
+    Log.println(F("Posting data to MQTT..."));
   #endif
   
   WiFiClient espClient;
 
   PubSubClient client(espClient);
 
-  char stringBuffer[10];
-
-  client.setServer(g_cloudServiceMQTTServer, g_cloudServiceMQTTPort);
-
-  if (!client.connected()) {
+  #if !CLOUD_DRY_RUN
+    client.setServer(g_cloudServiceMQTTServer, g_cloudServiceMQTTPort);
 
     // Create a random client ID
-    String clientId = "YAOWS32";
+    String clientId = TEST_RIG ? "YAOWS32-TEST" : "YAOWS32";
     clientId += String(random(0xffff), HEX);
 
     // Attempt to connect
-    if (client.connect(clientId.c_str(), g_cloudServiceMQTTID, g_cloudServiceMQTTPassword)) {
+    if (!client.connect(clientId.c_str(), g_cloudServiceMQTTID, g_cloudServiceMQTTPassword))
+    {
       #if DEBUG
-        Serial.println("\tConnected successfully");
+        Log.print("\tConnection failed. Reason code=");
+        Log.println(client.state());
       #endif
 
-      // Once connected, publish data ...
-      sprintf (stringBuffer, "%.2f", g_stationBatteryVoltage);
-      client.publish("yaows32/stationbattery", stringBuffer, true);
-
-      sprintf (stringBuffer, "%.2f", g_stationBatteryCurrent);
-      client.publish("yaows32/stationcurrent", stringBuffer, true);
-
-      sprintf (stringBuffer, "%.2f", g_stationWiFiRSSI);
-      client.publish("yaows32/stationrssi", stringBuffer, true);
-
-      sprintf (stringBuffer, "%.2f", g_weatherTempAirC);
-      client.publish("yaows32/airtemp", stringBuffer, true);
-
-      sprintf (stringBuffer, "%.2f", g_weatherTempWindChillC);
-      client.publish("yaows32/windchill", stringBuffer, true);
-
-      sprintf (stringBuffer, "%.2f", g_weatherHumidity);
-      client.publish("yaows32/humidity", stringBuffer, true);
-
-      sprintf (stringBuffer, "%.2f", g_weatherDewPointC);
-      client.publish("yaows32/dewpoint", stringBuffer, true);
-
-      sprintf (stringBuffer, "%.2f", g_weatherHeatIndexC);
-      client.publish("yaows32/heatindex", stringBuffer, true);
-
-      sprintf (stringBuffer, "%.2f", g_weatherTempWindChillC);
-      client.publish("yaows32/windchill", stringBuffer, true);
-
-      sprintf (stringBuffer, "%.2f", g_weatherPressureRel);
-      client.publish("yaows32/airpressure", stringBuffer, true);
-
-      sprintf (stringBuffer, "%.2f", g_weatherRainFall);
-      client.publish("yaows32/rainfall", stringBuffer, true);
-
-      sprintf (stringBuffer, "%.2f", g_weatherRainFallDaily);
-      client.publish("yaows32/rainfalldaily", stringBuffer, true);
-
-      sprintf (stringBuffer, "%.2f", g_weatherRainRate);
-      client.publish("yaows32/rainrate", stringBuffer, true);
-
-      sprintf (stringBuffer, "%.2f", g_weatherWindAvg);
-      client.publish("yaows32/windspeed", stringBuffer, true);
-
-      sprintf (stringBuffer, "%.2f", g_weatherWindDir);
-      client.publish("yaows32/winddir", stringBuffer, true);
-
-      sprintf (stringBuffer, "%.2f", g_weatherWindGust);
-      client.publish("yaows32/windgust", stringBuffer, true);
-    
-      // ... and resubscribe (future plan to implement OTA update mechanism)
-      //client.subscribe("otaUpdate");
-    
-    } else {
-        #if DEBUG
-          Serial.print("\tConnection failed. Reason code=");
-          Serial.println(client.state());
-        #endif
+      return;
     }
-  }
- 
+
+    #if DEBUG
+      Log.println("\tConnected successfully");
+    #endif
+  #else
+    Log.println(F("\tDRY-RUN - would publish (retained):"));
+  #endif
+
+  // Once connected, publish data ...
+  mqttPublish(client, "yaows32/stationbattery",  g_stationBatteryVoltage);
+  mqttPublish(client, "yaows32/stationcurrent",  g_stationBatteryCurrent);
+  mqttPublish(client, "yaows32/stationrssi",     (float)g_stationWiFiRSSI);
+  mqttPublish(client, "yaows32/airtemp",         g_weatherTempAirC);
+  mqttPublish(client, "yaows32/windchill",       g_weatherTempWindChillC);
+  mqttPublish(client, "yaows32/humidity",        g_weatherHumidity);
+  mqttPublish(client, "yaows32/dewpoint",        g_weatherDewPointC);
+  mqttPublish(client, "yaows32/heatindex",       g_weatherHeatIndexC);
+  mqttPublish(client, "yaows32/airpressure",     g_weatherPressureRel);
+  mqttPublish(client, "yaows32/rainfall",        g_weatherRainFall);
+  mqttPublish(client, "yaows32/rainfalldaily",   g_weatherRainFallDaily);
+  mqttPublish(client, "yaows32/rainrate",        g_weatherRainRate);
+  mqttPublish(client, "yaows32/windspeed",       g_weatherWindAvg);
+  mqttPublish(client, "yaows32/winddir",         g_weatherWindDir);
+  mqttPublish(client, "yaows32/windgust",        g_weatherWindGust);
+
+  #if !CLOUD_DRY_RUN
+    client.disconnect();
+  #endif
 }
 
 void sendCloudDataWeatherCloud()
@@ -113,23 +106,8 @@ void sendCloudDataWeatherCloud()
   char cloudServer[] = "api.weathercloud.net";
 
   #if DEBUG
-    Serial.println();
-    Serial.println(F("Posting data to WeatherCloud..."));
-  #endif
-
-  WiFiClient client;
-
-  if (!client.connect(cloudServer, 80))
-  {
-    #if DEBUG
-      Serial.println(F("\tConnection failed"));
-    #endif
-
-    return;
-  }
-
-  #if DEBUG
-    Serial.println("\tConnected successfully");
+    Log.println();
+    Log.println(F("Posting data to WeatherCloud..."));
   #endif
 
   String postStr = "/v01/set";
@@ -174,8 +152,30 @@ void sendCloudDataWeatherCloud()
   postStr += g_weatherTempWindChillC * 10;
 
   #if DEBUG
-    Serial.print("\tGET ");
-    Serial.println(postStr);
+    Log.print("\tGET ");
+    Log.println(postStr);
+  #endif
+
+  #if CLOUD_DRY_RUN
+    Log.print(F("\t[dry-run] would GET http://"));
+    Log.print(cloudServer);
+    Log.println(postStr);
+    return;
+  #endif
+
+  WiFiClient client;
+
+  if (!client.connect(cloudServer, 80))
+  {
+    #if DEBUG
+      Log.println(F("\tConnection failed"));
+    #endif
+
+    return;
+  }
+
+  #if DEBUG
+    Log.println("\tConnected successfully");
   #endif
 
   client.print(String("GET ") + postStr + " HTTP/1.1\r\n" + 
@@ -197,12 +197,12 @@ void sendCloudDataWeatherCloud()
       if (line == "429\r") line = "Update period too frequent, ignoring data!";
 
       #if DEBUG_CLOUD_VERBOSE
-        Serial.println("\t" + line);
+        Log.println("\t" + line);
       #endif
     }   
   }
   #if DEBUG
-    Serial.println(F("\tDisconnected from WeatherCloud"));
+    Log.println(F("\tDisconnected from WeatherCloud"));
   #endif
 }
 
@@ -211,18 +211,9 @@ void sendCloudDataThingSpeak()
   char cloudServer[] = "api.thingspeak.com";
 
   #if DEBUG
-    Serial.println();
-    Serial.println(F("Posting data to Thingspeak..."));
+    Log.println();
+    Log.println(F("Posting data to Thingspeak..."));
   #endif
-
-  WiFiClient client;
-
-  if (!client.connect(cloudServer, 80))
-  {
-    Serial.println("\tConnection failed");
-    return;
-  }
-  Serial.println("\tConnected successfully");
 
   String postStr = "/update";
   
@@ -249,14 +240,30 @@ void sendCloudDataThingSpeak()
   postStr += "&field7=";
   postStr += String(g_weatherRainFall);
 
+  #if CLOUD_DRY_RUN
+    Log.print(F("\t[dry-run] would GET http://"));
+    Log.print(cloudServer);
+    Log.println(postStr);
+    return;
+  #endif
+
+  WiFiClient client;
+
+  if (!client.connect(cloudServer, 80))
+  {
+    Log.println("\tConnection failed");
+    return;
+  }
+  Log.println("\tConnected successfully");
+
   client.print(String("GET ") + postStr + " HTTP/1.1\r\n" +
     "Host: " + cloudServer + "\r\n" +
     "User-Agegnt: YAOWS32\r\n" +
     "Connection: close\r\n\r\n");
 
   #if DEBUG
-    Serial.print("\tGET ");
-    Serial.println(postStr);
+    Log.print("\tGET ");
+    Log.println(postStr);
   #endif
 
   while (client.connected())
@@ -266,12 +273,12 @@ void sendCloudDataThingSpeak()
       String line = client.readStringUntil('\n');
 
       #if DEBUG_CLOUD_VERBOSE
-        Serial.println("\t" + line);
+        Log.println("\t" + line);
       #endif
     }   
   }
   #if DEBUG
-    Serial.println(F("\tDisconnected from ThingSpeak"));
+    Log.println(F("\tDisconnected from ThingSpeak"));
   #endif
 }
 
@@ -281,23 +288,8 @@ void sendCloudDataWeatherUnderground()
   char cloudServer[] = "rtupdate.wunderground.com";
 
   #if DEBUG
-    Serial.println();
-    Serial.println(F("Posting data to Wunderground..."));
-  #endif
-
-  WiFiClient client;
-
-  if (!client.connect(cloudServer, 80))
-  {
-    #if DEBUG
-      Serial.println(F("\tConnection failed"));
-    #endif
-
-    return;
-  }
-
-  #if DEBUG
-    Serial.println("\tConnected successfully");
+    Log.println();
+    Log.println(F("Posting data to Wunderground..."));
   #endif
 
   String postStr = "/weatherstation/updateweatherstation.php";
@@ -335,14 +327,36 @@ void sendCloudDataWeatherUnderground()
   postStr += mm_to_inches(g_weatherRainFallDaily);
   postStr += "&softwaretype=YAOWS32&action=updateraw";
 
+  #if CLOUD_DRY_RUN
+    Log.print(F("\t[dry-run] would GET http://"));
+    Log.print(cloudServer);
+    Log.println(postStr);
+    return;
+  #endif
+
+  WiFiClient client;
+
+  if (!client.connect(cloudServer, 80))
+  {
+    #if DEBUG
+      Log.println(F("\tConnection failed"));
+    #endif
+
+    return;
+  }
+
+  #if DEBUG
+    Log.println("\tConnected successfully");
+  #endif
+
   client.print(String("GET ") + postStr + " HTTP/1.1\r\n" +
     "Host: " + cloudServer + "\r\n" +
     "User-Agent: YAOWS32\r\n" +
     "Connection: close\r\n\r\n");
 
   #if DEBUG
-    Serial.print("\tGET ");
-    Serial.println(postStr);
+    Log.print("\tGET ");
+    Log.println(postStr);
   #endif
 
   while (client.connected())
@@ -352,12 +366,12 @@ void sendCloudDataWeatherUnderground()
         String line = client.readStringUntil('\n');
 
         #if DEBUG_CLOUD_VERBOSE
-          Serial.println("\t" + line);
+          Log.println("\t" + line);
         #endif
       }   
     }
     #if DEBUG
-      Serial.println(F("\tDisconnected from Wunderground"));
+      Log.println(F("\tDisconnected from Wunderground"));
     #endif
 }
 
@@ -367,23 +381,8 @@ void sendCloudDataPWSWeather()
   char cloudServer[] = "www.pwsweather.com";
 
   #if DEBUG
-    Serial.println();
-    Serial.println(F("Posting data to PWSWeather..."));
-  #endif
-
-  WiFiClient client;
-
-  if (!client.connect(cloudServer, 80))
-  {
-    #if DEBUG
-      Serial.println(F("\tConnection failed"));
-    #endif
-
-    return;
-  }
-
-  #if DEBUG
-    Serial.println("\tConnected successfully");
+    Log.println();
+    Log.println(F("Posting data to PWSWeather..."));
   #endif
 
   String postStr = "/pwsupdate/pwsupdate.php?";
@@ -422,14 +421,36 @@ void sendCloudDataPWSWeather()
   postStr += mm_to_inches(g_weatherRainFallDaily);
   postStr += "&softwaretype=YAOWS32&action=updateraw";
 
+  #if CLOUD_DRY_RUN
+    Log.print(F("\t[dry-run] would GET http://"));
+    Log.print(cloudServer);
+    Log.println(postStr);
+    return;
+  #endif
+
+  WiFiClient client;
+
+  if (!client.connect(cloudServer, 80))
+  {
+    #if DEBUG
+      Log.println(F("\tConnection failed"));
+    #endif
+
+    return;
+  }
+
+  #if DEBUG
+    Log.println("\tConnected successfully");
+  #endif
+
   client.print(String("GET ") + postStr + " HTTP/1.1\r\n" +
     "Host: " + cloudServer + "\r\n" +
     "User-Agent: YAOWS32\r\n" +
     "Connection: close\r\n\r\n");
 
   #if DEBUG
-    Serial.print("\tGET ");
-    Serial.println(postStr);
+    Log.print("\tGET ");
+    Log.println(postStr);
   #endif
 
   while (client.connected())
@@ -439,11 +460,11 @@ void sendCloudDataPWSWeather()
         String line = client.readStringUntil('\n');
 
         #if DEBUG_CLOUD_VERBOSE
-          Serial.println("\t" + line);
+          Log.println("\t" + line);
         #endif
       }   
     }
     #if DEBUG
-      Serial.println(F("\tDisconnected from PWSWeather"));
+      Log.println(F("\tDisconnected from PWSWeather"));
     #endif
 }

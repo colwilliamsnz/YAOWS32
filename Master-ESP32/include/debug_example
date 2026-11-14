@@ -1,6 +1,10 @@
 #ifndef DEBUG_H
 #define DEBUG_H
 
+// TEST_RIG builds (pio env "testrig") force DEBUG and DEBUG_FAST on - see
+// buildprofile.h. Every value below can also be overridden with a build flag.
+#include "buildprofile.h"
+
 // // Example file - ensure you rename to "debug.h" and update appropriately!
 
 // *** Compiler directives for debugging to serial console *********************
@@ -8,19 +12,30 @@
 // *****************************************************************************
 
 // Send debug output to serial console
-#define DEBUG                               0
-
+#ifndef DEBUG
+  #define DEBUG                             0
+#endif
 // Wake events and updates occur every 2 minutes VS every 10
-#define DEBUG_FAST                          0 
-
+#ifndef DEBUG_FAST
+  #define DEBUG_FAST                        0
+#endif
 // Print verbose messages from rest API responses from cloud services
-#define DEBUG_CLOUD_VERBOSE                 0
-
+#ifndef DEBUG_CLOUD_VERBOSE
+  #define DEBUG_CLOUD_VERBOSE               0
+#endif
 // Send data to "debug" instances of the various cloud services
-#define DEBUG_CLOUD_WEATHERUNDERGROUND      0
-#define DEBUG_CLOUD_PWSWEATHER              0
-#define DEBUG_CLOUD_WEATHERCLOUD            0
-#define DEBUG_CLOUD_THINGSPEAK              0
+#ifndef DEBUG_CLOUD_WEATHERUNDERGROUND
+  #define DEBUG_CLOUD_WEATHERUNDERGROUND    0
+#endif
+#ifndef DEBUG_CLOUD_PWSWEATHER
+  #define DEBUG_CLOUD_PWSWEATHER            0
+#endif
+#ifndef DEBUG_CLOUD_WEATHERCLOUD
+  #define DEBUG_CLOUD_WEATHERCLOUD          0
+#endif
+#ifndef DEBUG_CLOUD_THINGSPEAK
+  #define DEBUG_CLOUD_THINGSPEAK            0
+#endif
 // *****************************************************************************
 
 #endif
