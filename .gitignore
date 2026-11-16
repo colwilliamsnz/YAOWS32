@@ -1,7 +1,13 @@
-
-Images/.DS_Store
-YAOWS32.code-workspace
+# macOS
 .DS_Store
+Images/.DS_Store
+
+# Claude
+CLAUDE.md
+
+# PlatformIO
+YAOWS32.code-workspace
+
 Master-ESP32/src/passwords.cpp
 Master-ESP32/yaows32-master.code-workspace
 Master-ESP32/.vscode/extensions.json

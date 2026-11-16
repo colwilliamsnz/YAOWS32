@@ -11,26 +11,31 @@
 #include "functions.h"    // project specific functions
 #include "weathermath.h"  // math functions - conversions and calculations
 #include "cloud.h"        // cloud functions - updates to cloud services
-#include "maintenance.h"  // OTA + web console maintenance window
-#include "log.h"          // Serial + web console logger
+#include "maintenance.h"  // maintenance window - OTA firmware upload + web log
+#include "log.h"          // Log - Serial + history for the web log page
 
 #include "gpio.h"         // #define entries for GPIO pin assignments
 
 /**
- * @brief Tell the Arduino core NOT to mark the running firmware as valid at
- * boot. After an OTA update the new image stays "pending verify" until
- * markAppValidIfPending() is called (after WiFi + a full cycle succeed). If it
- * crashes/resets before then, the bootloader rolls back to the previous image.
+ * @brief Firmware rollback protection. The Arduino core calls this at boot -
+ * returning true tells it NOT to mark the running firmware as good straight
+ * away. After an OTA update the new firmware stays "pending verify" until
+ * markAppValidIfPending() is called at the end of the first successful cycle
+ * (see runCycle). If it crashes or resets before then, the bootloader rolls
+ * back to the previous firmware automatically.
  */
 extern "C" bool verifyRollbackLater()
 {
   return true;
-}
+} // end function verifyRollbackLater ******************************************
+
 
 /**
- * @brief One measurement + upload cycle. Leaves WiFi connected (caller decides
- * when to kill it) and never sleeps, so it can also be run from inside the
- * maintenance window.
+ * @brief One measurement + upload cycle: read the ATTiny85 slave and sensors,
+ * calculate derived measurements, connect WiFi and post to the cloud services.
+ *
+ * Leaves WiFi connected (the caller decides when to kill it) and never sleeps,
+ * so it is used both by loop() and from inside the maintenance window.
  */
 void runCycle()
 {
@@ -60,9 +65,10 @@ void runCycle()
 
   // **** functions that require WiFi end here ****
 
-  // We got here with WiFi up and without crashing - new firmware is good
+  // We got here with WiFi up and without crashing - if this is new firmware
+  // (first boot after an OTA upload) mark it as good to cancel the rollback
   if (WiFi.status() == WL_CONNECTED) markAppValidIfPending();
-}
+} // end function runCycle *****************************************************
 
 void setup()
 {
@@ -96,9 +102,11 @@ void setup()
   // Sync ESP32 RTC with NTP
   getNTPTime();
 
-  // On power-on / EN reset: open the OTA + web console window, run one normal
-  // cycle so its output can be watched in the browser, then serve until the
-  // window closes.
+  // Maintenance window (power-on / EN reset, or first boot after a firmware
+  // upload): serve the status page, firmware upload and web log for a few
+  // minutes. One normal cycle runs straight away so its output can be watched
+  // on the log page, then cycles continue on schedule until the window closes.
+  // See maintenance.cpp.
   if (maintenanceShouldEnter())
   {
     maintenanceBegin();

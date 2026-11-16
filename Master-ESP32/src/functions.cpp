@@ -427,9 +427,11 @@ void getSlave()
   // request 8 bytes from slave device
   uint8_t bytesReceived = Wire1.requestFrom((uint8_t)0x4, (uint8_t)8);
 
+  // *** Check the slave actually answered with a full record ******************
+  // Slave missing (eg desktop test rig) or I2C bus error - don't interpret
+  // junk as wind/rain, report zero for the period instead
   if (bytesReceived != 8)
   {
-    // Slave missing (eg desktop test rig) or bus error - don't interpret junk
     while (Wire1.available()) Wire1.read();
 
     g_weatherRainRate = 0;
@@ -583,24 +585,29 @@ void getSensorDHT22()
 
 
 /**
- * @brief Get the temperature and humidty from AM2315 I2C sensor
- * 
+ * @brief Get the temperature and humidity from the AM2315 I2C sensor (the
+ * station's air temp/humidity sensor).
+ *
+ * Both values are read in one I2C transaction. The library refuses reads less
+ * than 2 secs apart (and begin() takes a test reading at startup) so a failed
+ * read is retried once after 2.1 secs. If it still fails both values are set
+ * to NaN - MQTT skips NaN values and the status page shows "—".
  */
 void getSensorAM2315()
 {
   float _temp = NAN;
   float _hum = NAN;
 
-  // One I2C transaction for both values. The library refuses reads less than
-  // 2s apart (and begin() takes a test reading), so retry once after 2.1s.
-  bool ok = sensor_am2315.readTemperatureAndHumidity(&_temp, &_hum);
-  if (!ok)
+  bool readOK = sensor_am2315.readTemperatureAndHumidity(&_temp, &_hum);
+
+  // too soon after the last read? wait out the 2 sec limit and try again
+  if (!readOK)
   {
     delay(2100);
-    ok = sensor_am2315.readTemperatureAndHumidity(&_temp, &_hum);
+    readOK = sensor_am2315.readTemperatureAndHumidity(&_temp, &_hum);
   }
 
-  if (!ok)
+  if (!readOK)
   {
     _temp = NAN;
     _hum = NAN;
@@ -706,7 +713,10 @@ void getSensorBMP180()
   g_weatherPressureAbs = _press;
   g_weatherPressureRel = _press + g_stationAltitude / 8.3; // formula to convert abs to rel (altitude / 8.3)
 
-  float _altitude = sensor_bmp180.readAltitude(g_stationPressureCal * 100.0F); // hPa -> Pa (library expects Pa). Estimates altitude from nearest observation station's sea-level pressure (for a new install location)
+  // Estimate altitude from the nearest observation station's sea-level pressure
+  // (helps set g_stationAltitude for a new install location). The library
+  // expects Pa, g_stationPressureCal is hPa, hence * 100
+  float _altitude = sensor_bmp180.readAltitude(g_stationPressureCal * 100.0F);
 
   #if DEBUG
     Log.print(F("\tBMP180 Press: \t\t"));
@@ -774,7 +784,9 @@ void resetDay()
   struct tm timeNow;
   getLocalTime(&timeNow);
 
-  char timeCheck[6]; // "HH:MM" + null. char array we will assemble tm struct for comparison with configured reset time
+  // char array we will assemble tm struct into for comparison with configured
+  // reset time ("HH:MM" + null)
+  char timeCheck[6];
   snprintf(timeCheck, sizeof(timeCheck), "%02d:%02d", timeNow.tm_hour, timeNow.tm_min);
 
   if (strcmp(timeCheck, g_stationDailyResetTime) == 0) // char arrays match, its time to reset the daily stats

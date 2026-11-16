@@ -100,12 +100,13 @@ constexpr   char            g_ntpTimeZone[]             = "NZST-12NZDT,M9.5.0,M4
 constexpr   int             g_ntpCheckInterval          = 120;
 
 
-// === Maintenance (OTA + web console) window ==================================
-// On power-on / EN button reset the station stays awake with WiFi on for this
-// many seconds so firmware can be uploaded (http://<hostname>.local/update) and
-// the console log viewed (http://<hostname>.local/log). The window is
-// automatically extended while the status page is open or an upload is in
-// progress, up to g_maintMaxSecs.
+// === Maintenance window (OTA firmware upload + web log) ======================
+// On power-on / EN button reset (and the first boot after a firmware upload)
+// the station stays awake with WiFi on for g_maintWindowSecs so firmware can be
+// uploaded (http://<hostname>.local/update) and the log viewed
+// (http://<hostname>.local/log). The window is automatically extended while the
+// status page is open or an upload is in progress, up to g_maintMaxSecs. Both
+// values are in seconds. See maintenance.cpp.
 #if !TEST_RIG
 constexpr   int             g_maintWindowSecs           = 120;
 constexpr   int             g_maintMaxSecs              = 900;

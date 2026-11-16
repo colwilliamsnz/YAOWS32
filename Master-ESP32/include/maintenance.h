@@ -1,32 +1,32 @@
 #ifndef MAINTENANCE_H
 #define MAINTENANCE_H
 
-/*
- * Maintenance window: a short period after power-on / EN-button reset during
- * which the station keeps WiFi up and serves:
- *
- *   http://<hostname>.local/            status page (countdown, battery, links)
- *   http://<hostname>.local/update      ElegantOTA firmware upload
- *   http://<hostname>.local/log         console log (everything Serial printed)
- *
- * All pages use the g_otaUser / g_otaPass login (passwords.cpp).
- */
+// *** Maintenance window (OTA firmware upload + web log) **********************
+// A short period after power-on / EN button reset (or the first boot after a
+// firmware upload) during which the station keeps WiFi up and serves:
+//
+//   http://<hostname>.local/          status page (countdown, battery, links)
+//   http://<hostname>.local/update    ElegantOTA firmware upload
+//   http://<hostname>.local/log       console log (everything Log printed)
+//
+// All pages use the g_otaUser / g_otaPass login (passwords.cpp).
+//
+// Used from setup() in main.cpp:
+//
+//   if (maintenanceShouldEnter())
+//   {
+//     maintenanceBegin();
+//     runCycle();
+//     maintenanceRun(runCycle);
+//     maintenanceEnd();
+//   }
+// *****************************************************************************
 
-// True if this boot should open the window (reset reason + battery check)
-bool maintenanceShouldEnter();
+bool    maintenanceShouldEnter();             // should this boot open the window?
+void    maintenanceBegin();                   // start web server etc (WiFi must be up)
+void    maintenanceRun(void (*cycleFn)());    // serve until the window closes
+void    maintenanceEnd();                     // stop web server (before killWiFi)
 
-// Start web server, mDNS and ElegantOTA. WiFi must be connected.
-void maintenanceBegin();
-
-// Serve until the window expires (or "sleep" command). cycleFn is run when the
-// "cycle" console command / button is used.
-void maintenanceRun(void (*cycleFn)());
-
-// Stop web server and mDNS (call before killWiFi / sleep)
-void maintenanceEnd();
-
-// Mark a freshly OTA'd firmware as good (cancels automatic rollback). Safe to
-// call every cycle - only acts when the running image is pending verification.
-void markAppValidIfPending();
+void    markAppValidIfPending();              // new firmware is good - cancel rollback
 
 #endif

@@ -10,18 +10,23 @@
 #include "cloud.h"
 
 #include "gpio.h"
-#include "log.h"
-#include "buildprofile.h"
+#include "log.h"            // Log - Serial + history for the web log page
+#include "buildprofile.h"   // station vs test rig (CLOUD_DRY_RUN)
 
 #include <Arduino.h>
 #include <PubSubClient.h>
 
 /**
- * @brief Publish one retained value, or just print it in dry-run mode
+ * @brief Publish one value to an MQTT topic (retained, so subscribers such as
+ * Home Assistant get the last value straight away). Values are sent as text
+ * with 2 decimal places.
+ *
+ * Test rig (CLOUD_DRY_RUN): prints what would be published instead.
  */
 static void mqttPublish(PubSubClient &client, const char *topic, float value)
 {
-  // never overwrite a retained topic with "nan" from a failed sensor read
+  // never overwrite a retained topic with "nan" from a failed sensor read -
+  // subscribers keep the last good value instead
   if (isnan(value))
   {
     Log.printf("\t[skip] %-28s nan\n", topic);
@@ -36,8 +41,16 @@ static void mqttPublish(PubSubClient &client, const char *topic, float value)
   #else
     client.publish(topic, stringBuffer, true);
   #endif
-}
+} // end function mqttPublish **************************************************
 
+
+/**
+ * @brief Post weather and station data to the MQTT server (passwords.cpp), one
+ * retained topic per value (yaows32/airtemp, yaows32/humidity etc) for easy
+ * use by Home Assistant and similar.
+ *
+ * Test rig (CLOUD_DRY_RUN): doesn't connect, just prints each topic and value.
+ */
 void sendCloudDataMQTT()
 {
   #if DEBUG
@@ -52,7 +65,8 @@ void sendCloudDataMQTT()
   #if !CLOUD_DRY_RUN
     client.setServer(g_cloudServiceMQTTServer, g_cloudServiceMQTTPort);
 
-    // Create a random client ID
+    // Create a random client ID (test rig gets its own prefix so the two are
+    // easy to tell apart on the MQTT server)
     String clientId = TEST_RIG ? "YAOWS32-TEST" : "YAOWS32";
     clientId += String(random(0xffff), HEX);
 
@@ -94,7 +108,7 @@ void sendCloudDataMQTT()
   #if !CLOUD_DRY_RUN
     client.disconnect();
   #endif
-}
+} // end function sendCloudDataMQTT ********************************************
 
 void sendCloudDataWeatherCloud()
 {
@@ -156,6 +170,7 @@ void sendCloudDataWeatherCloud()
     Log.println(postStr);
   #endif
 
+  // Test rig dry-run: show exactly what would be sent, but don't connect
   #if CLOUD_DRY_RUN
     Log.print(F("\t[dry-run] would GET http://"));
     Log.print(cloudServer);
@@ -240,6 +255,7 @@ void sendCloudDataThingSpeak()
   postStr += "&field7=";
   postStr += String(g_weatherRainFall);
 
+  // Test rig dry-run: show exactly what would be sent, but don't connect
   #if CLOUD_DRY_RUN
     Log.print(F("\t[dry-run] would GET http://"));
     Log.print(cloudServer);
@@ -327,6 +343,7 @@ void sendCloudDataWeatherUnderground()
   postStr += mm_to_inches(g_weatherRainFallDaily);
   postStr += "&softwaretype=YAOWS32&action=updateraw";
 
+  // Test rig dry-run: show exactly what would be sent, but don't connect
   #if CLOUD_DRY_RUN
     Log.print(F("\t[dry-run] would GET http://"));
     Log.print(cloudServer);
@@ -421,6 +438,7 @@ void sendCloudDataPWSWeather()
   postStr += mm_to_inches(g_weatherRainFallDaily);
   postStr += "&softwaretype=YAOWS32&action=updateraw";
 
+  // Test rig dry-run: show exactly what would be sent, but don't connect
   #if CLOUD_DRY_RUN
     Log.print(F("\t[dry-run] would GET http://"));
     Log.print(cloudServer);

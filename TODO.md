@@ -15,9 +15,7 @@
 * ~Refactor initRTC function (very messy!)-Removed, not required~
 * ~Is 3221RTC worth retaining? ESP32 RTC races a little over say 100 minutes ~ 3 seconds however NTP sync keeps in check VS 700uA that 3231RTC uses...Removed!~
 * Move weather condition variables to a "struc" (or object, with methods to extract measurements in various units)
-* Add in MQTT (EG, to Mosquito, Node-Red, InfluxDB, & Grafana)
 * ~Consider: OTA programing web interface?~
-* Add in fixed IP address for quicker connections to WiFi (every second running at 170mAh counts!)
 * Consider: Refactor cloud publishing code - 95% is similar so move it to function
 * ~Fix PWSWeather function--missing wind data~
 * ~Add "test harnis" for cloud publishing services~
